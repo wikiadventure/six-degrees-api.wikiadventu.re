@@ -1,0 +1,41 @@
+{
+  "$schema": "https://json.schemastore.org/tsconfig",
+  "display": "Node 16 + Strictest",
+  "compilerOptions": {
+    "lib": [
+      "esnext"
+    ],
+    "module": "CommonJS",
+    "target": "ES2022",
+    "moduleResolution": "Node",
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "alwaysStrict": true,
+    // "allowUnusedLabels": false,
+    // "allowUnreachableCode": false,
+    // "exactOptionalPropertyTypes": true,
+    // "noFallthroughCasesInSwitch": true,
+    "noImplicitOverride": true,
+    "noImplicitReturns": true,
+    "noPropertyAccessFromIndexSignature": true,
+    "noUncheckedIndexedAccess": true,
+    // "noUnusedLocals": true,
+    // "noUnusedParameters": true,
+    "importsNotUsedAsValues": "error",
+    "checkJs": true,
+    "baseUrl": "src",
+    "outDir": "build",
+    "paths": {
+      "@process/*": ["process/*"],
+      "@utils": ["utils/index.ts"]
+    }
+  },
+  "include": ["src/**/*.ts", "tests/**/*.ts"],
+  "exclude": ["/build", "node_modules", ".vscode"],
+  "ts-node": {
+    "files": true
+    // "esm": true
+  } 
+}

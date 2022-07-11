@@ -1,0 +1,29 @@
+{
+  "name": "sixdegreeofwikiadventure",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "watch-error": "tsc -w --noEmit",
+    "dev": "nodemon --config nodemon.json",
+    "build": "swc src -d build",
+    "start": "node build"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "arangojs": "^7.7.0",
+    "dotenv": "^16.0.1",
+    "event-stream": "^4.0.1",
+    "got": "^11.8.5"
+  },
+  "devDependencies": {
+    "@types/event-stream": "^4.0.0",
+    "@types/node": "^17.0.31",
+    "nodemon": "^2.0.16",
+    "swc": "^1.0.11",
+    "ts-node": "^10.7.0",
+    "tsconfig-paths": "^4.0.0",
+    "typescript": "^4.6.4"
+  }
+}

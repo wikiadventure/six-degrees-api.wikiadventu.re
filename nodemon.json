@@ -1,0 +1,6 @@
+{
+    "restartable": "rs",
+    "ignore": [".git", "node_modules/", "build/"],
+    "exec": "node --inspect=20019 -r tsconfig-paths/register -r ts-node/register src/index.ts",
+    "ext": "js, json, ts"
+}
