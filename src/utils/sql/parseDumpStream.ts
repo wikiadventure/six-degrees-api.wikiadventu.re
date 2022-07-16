@@ -2,7 +2,7 @@ import { exists } from "@utils";
 import { mapSync, split } from "event-stream";
 import got from "got/dist/source";
 import type Request from "got/dist/source/core";
-import { lang } from "index";
+import { lang } from "../../index";
 import { createReadStream, ReadStream } from 'node:fs';
 import { createGunzip } from 'node:zlib';
 
