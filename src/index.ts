@@ -8,7 +8,7 @@ export const max_group_per_request = parseInt(process.env['MAX_GROUP_PER_REQUEST
 const args = process.argv.slice(2);
 
 export const lang = process.env['WIKI_LANG'];
-const DB_URL = process.env['DB_URL'];
+const DB_URL = process.env['DB_URL'] || "https://localhost:8529";
 const DB_USERNAME = process.env['DB_USERNAME'];
 const DB_PASSWORD = process.env['DB_PASSWORD'];
 
