@@ -1,6 +1,6 @@
 
 
-FROM arangodb:lastest
+FROM arangodb:latest
 
 ENV ARANGO_NO_AUTH 1
 
@@ -81,9 +81,6 @@ RUN addgroup -g 1000 node \
 ARG CLOUD_SDK_VERSION=393.0.0
 ENV CLOUD_SDK_VERSION=$CLOUD_SDK_VERSION
 ENV PATH /google-cloud-sdk/bin:$PATH
-COPY --from=static-docker-source /usr/local/bin/docker /usr/local/bin/docker
-RUN addgroup -g 1000 -S cloudsdk && \
-    adduser -u 1000 -S cloudsdk -G cloudsdk
 RUN if [ `uname -m` = 'x86_64' ]; then echo -n "x86_64" > /tmp/arch; else echo -n "arm" > /tmp/arch; fi;
 RUN ARCH=`cat /tmp/arch` && apk --no-cache add \
         curl \
