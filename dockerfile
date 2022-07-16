@@ -103,10 +103,12 @@ RUN git config --system credential.'https://source.developers.google.com'.helper
 
 COPY . .
 
-CMD npm i &&\
+CMD echo $GCP_JSON > GCP.json &&\
+    npm i &&\
     npm run build &&\
     npm start &&\
     arangodump --output-directory "dump" --server.database "${WIKI_LANG}wiki" &&\
+    gcloud auth activate-service-account --key-file=GCP.json &&\
     gsutil rm -r -f "gs://graph-${WIKI_LANG}wiki/dump" &&\
     gsutil cp dump "gs://graph-${WIKI_LANG}wiki"
     
