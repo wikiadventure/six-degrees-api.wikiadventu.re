@@ -24,7 +24,7 @@ jobs:
           --zone=europe-west9-a --machine-type=n2-standard-4 --network-interface=network-tier=PREMIUM,subnet=default \
           --maintenance-policy=MIGRATE --provisioning-model=STANDARD --no-service-account --no-scopes \
           --tags=https-server --image=projects/cos-cloud/global/images/cos-stable-97-16919-103-10 \
-          --boot-disk-size=300GB --boot-disk-type=pd-balanced --boot-disk-device-name=instance-1 \
+          --boot-disk-size=250GB --boot-disk-type=pd-balanced --boot-disk-device-name=instance-1 \
           --container-image=docker.io/sacramentix1225/generate-wiki-graph:latest --container-restart-policy=never \
           --container-privileged \
           --container-env=WIKI_LANG=${{ github.event.inputs.WIKI_LANG }},GCP_JSON=${{ secrets.GCP_JSON }} \
