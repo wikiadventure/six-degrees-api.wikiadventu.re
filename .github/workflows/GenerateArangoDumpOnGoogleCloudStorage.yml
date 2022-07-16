@@ -1,0 +1,34 @@
+name: Generate arangodump on Google Cloud Storage
+
+on:
+  workflow_dispatch:
+    inputs:
+      WIKI_LANG:
+        description: 'The 2 letter lang code to generate dump for'
+        required: true
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3.0.2
+      - id: 'auth'
+        name: 'Authenticate to Google Cloud'
+        uses: 'google-github-actions/auth@v0'
+        with:
+            credentials_json: '${{ secrets.GCP_JSON }}'
+      - name: Set up gcloud Cloud SDK environment
+        uses: google-github-actions/setup-gcloud@v0.6.0
+      - name: Create a Google Compute Engine instance to do the work
+        run: |
+          gcloud compute instances create-with-container generate-wiki-graph-${{ github.event.inputs.WIKI_LANG }} --project=sixdegreesofwikiadventure \
+          --zone=europe-west9-a --machine-type=n2-standard-4 --network-interface=network-tier=PREMIUM,subnet=default \
+          --maintenance-policy=MIGRATE --provisioning-model=STANDARD --no-service-account --no-scopes \
+          --tags=https-server --image=projects/cos-cloud/global/images/cos-stable-97-16919-103-10 \
+          --boot-disk-size=250GB --boot-disk-type=pd-balanced --boot-disk-device-name=instance-1 \
+          --container-image=docker.io/sacramentix1225/generate-wiki-graph:latest --container-restart-policy=never \
+          --container-privileged \
+          --container-env=WIKI_LANG=${{ github.event.inputs.WIKI_LANG }},GCP_JSON=${{ secrets.GCP_JSON }} \
+          --no-shielded-secure-boot --shielded-vtpm --shielded-integrity-monitoring \
+          --labels=container-vm=cos-stable-97-16919-103-10
