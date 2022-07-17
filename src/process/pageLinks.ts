@@ -3,7 +3,7 @@ import { aql, CollectionType, Database } from "arangojs";
 import { parseQuote, SqlDumpParser } from '../utils/sql/parseDumpStream';
 
 export async function parsePageLinksDump() {
-
+    console.log("Creating links collection");
     const links = langDb.collection<{}>("links");
     
     try {
@@ -13,11 +13,12 @@ export async function parsePageLinksDump() {
     } catch(e) {
         
     }
-
+    console.log("Links collection created");
+    console.log("pagelinks dump arango transfert started");
     const parser = new PageLinkSqlDumpParser(langDb);
     await parser.process();
     await parser.sendPageLinks();
-    console.log("enwiki-latest-pagelinks.sql arango transfert complete");
+    console.log("pagelinks dump arango transfert completed");
     console.log("Number of links : ",(await links.count()).count)
 
 
@@ -32,7 +33,8 @@ class PageLinkSqlDumpParser extends SqlDumpParser {
     override async processChunk(s:string) {
         const fromIndex = s.indexOf(",");
         if (fromIndex == -1 ) return;
-        const from = parseInt(s.slice(0,fromIndex));
+        const from = 
+        parseInt(s.slice(0,fromIndex));
         if (isNaN(from)) return;
         const namespaceIndex = s.indexOf(",",fromIndex+1);
         if (namespaceIndex == -1 ) return;

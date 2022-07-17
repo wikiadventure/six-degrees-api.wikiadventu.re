@@ -4,6 +4,7 @@ import type { DocumentCollection, EdgeCollection } from "arangojs/collection";
 import type { Database } from 'arangojs';
 
 export async function parsePageDump() {
+    console.log("Create page collection");
     const page = langDb.collection<WikiPage>("page");
     try {
         await page.create().catch();
@@ -11,11 +12,12 @@ export async function parsePageDump() {
     } catch(e) {
 
     }
-
+    console.log("Page collection created");
+    console.log("page dump arango transfert started");
     const parser = new PageSqlDumpParser(langDb, page);
     await parser.process();
     await parser.sendPage();
-    console.log("enwiki-latest-page.sql arango transfert complete");
+    console.log("page dump arango transfert completed");
     console.log("Number of page : ",(await page.count()).count)
 
 
@@ -29,6 +31,7 @@ class PageSqlDumpParser extends SqlDumpParser {
     page:DocumentCollection<WikiPage> & EdgeCollection<WikiPage>;
 
     override async processChunk(s:string) {
+        // console.log("chunck : ", s);
         const idIndex = s.indexOf(",");
         if (idIndex == -1 ) return;
         const id = parseInt(s.slice(0,idIndex));
@@ -39,16 +42,12 @@ class PageSqlDumpParser extends SqlDumpParser {
         if (namespace != 0) return;
         if (s.slice(namespaceIndex+1, namespaceIndex+2) != "'") return;
         const [title, titleIndex] = parseQuote(s, namespaceIndex+2);
-        const [restrictions, restrictionsIndex] = parseQuote(s, titleIndex+1);
-        const isRedirect = s.slice(restrictionsIndex+2, restrictionsIndex+3);
-        if (restrictions != "") {
-            // console.log(s);
-        }
-        // if (isRedirect == "1") addRedirect(id, title);
-        else if (isRedirect == "0") this.addPage(id, title);
+        const isRedirect = s.slice(titleIndex+2, titleIndex+3);
+        if (isRedirect == "0") await this.addPage(id, title);
     }
 
     async addPage(id:number, title:string) {
+        // console.log("add page : ", title);
         this.params.push({
             title,
             _key: id+""

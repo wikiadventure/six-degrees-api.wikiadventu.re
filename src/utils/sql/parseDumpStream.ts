@@ -1,10 +1,13 @@
 import { exists } from "@utils";
 import { mapSync, split } from "event-stream";
-import got from "got/dist/source";
-import type Request from "got/dist/source/core";
 import { lang } from "../../index";
 import { createReadStream, ReadStream } from 'node:fs';
 import { createGunzip } from 'node:zlib';
+import { Dispatcher, pipeline } from 'undici';
+import { Readable, Stream } from "node:stream";
+import got from "got/dist/source/";
+import type Request from "got/dist/source/core/index";
+
 
 export class SqlDumpParser {
     inParenthesis = false;
@@ -14,7 +17,7 @@ export class SqlDumpParser {
     lastChunckPromise = Promise.resolve();
     path:string;
     url:string;
-    stream!:ReadStream | Request;
+    stream!:Request;
 
     constructor(kind:string) {
         this.path = `cache/${lang}wiki-lastest-${kind}`;
@@ -22,11 +25,14 @@ export class SqlDumpParser {
     }
 
     async process() {
-        
         const inCache = await exists(this.path);
-        console.log(this.path, this.url, inCache);
-        this.stream =  inCache ? createReadStream(this.path) : got.stream(this.url);
+        // inCache ? createReadStream(this.path) :
+        this.stream = await got.stream(this.url);//await pipeline(this.url, {});
+        // this.stream.
 
+        // const b = new Stream.Readable(this.stream);
+        
+        // const t = got.s
         await new Promise<void>((resolve, reject)=>{
             this.stream
             .pipe(createGunzip())
@@ -98,3 +104,4 @@ export function parseQuote(s:string, index:number):[string, number] {
     }
     return [result, j];
 }
+

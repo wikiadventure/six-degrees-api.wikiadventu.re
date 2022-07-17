@@ -4,7 +4,7 @@ import { parseQuote, SqlDumpParser } from '../utils/sql/parseDumpStream';
 
 export async function parseRedirectDump() {;
 
-    
+    console.log("Creating redirect collection");
     const redirect = langDb.collection<WikiRedirect>("redirect");
     try {
         await redirect.create().catch();
@@ -12,13 +12,12 @@ export async function parseRedirectDump() {;
     } catch(e) {
 
     }
-
+    console.log("Redirect collection created");
+    console.log("Redirect dump arango transfert started");
     const parser = new RedirectSqlDumpParser(langDb);
     await parser.process();
-
-
     await parser.sendRedirect();
-    console.log("enwiki-latest-redirect.sql arango transfert complete");
+    console.log("Redirect dump arango transfert completed");
     console.log((await redirect.count()).count)
 
 }
