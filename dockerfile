@@ -1,10 +1,46 @@
 
 
-FROM arangodb:latest
+FROM alpine:3.14
 
 ENV ARANGO_NO_AUTH 1
 
-ENV NODE_VERSION 16.16.0
+ENV ARANGO_VERSION 3.9.2
+ENV ARANGO_URL https://download.arangodb.com/arangodb39/DEBIAN/amd64
+ENV ARANGO_PACKAGE arangodb3_${ARANGO_VERSION}-1_amd64.deb
+ENV ARANGO_PACKAGE_URL ${ARANGO_URL}/${ARANGO_PACKAGE}
+ENV ARANGO_SIGNATURE_URL ${ARANGO_PACKAGE_URL}.asc
+
+# see
+#   https://www.arangodb.com/docs/3.9/programs-arangod-server.html#managing-endpoints
+#   https://www.arangodb.com/docs/3.9/programs-arangod-log.html
+
+RUN apk add --no-cache gnupg pwgen binutils numactl numactl-tools nodejs yarn && \
+    yarn global add foxx-cli@2.0.1 && \
+    apk del yarn && \
+    gpg --batch --keyserver keys.openpgp.org --recv-keys CD8CB0F1E0AD5B52E93F41E7EA93F5E56E751E9B && \
+    mkdir /docker-entrypoint-initdb.d && \
+    cd /tmp                                && \
+    wget ${ARANGO_SIGNATURE_URL}           && \
+    wget ${ARANGO_PACKAGE_URL}             && \
+    gpg --verify ${ARANGO_PACKAGE}.asc     && \
+    ar x ${ARANGO_PACKAGE} data.tar.gz     && \
+    tar -C / -x -z -f data.tar.gz          && \
+    sed -ri \
+        -e 's!127\.0\.0\.1!0.0.0.0!g' \
+        -e 's!^(file\s*=\s*).*!\1 -!' \
+        -e 's!^\s*uid\s*=.*!!' \
+        /etc/arangodb3/arangod.conf        && \
+    chgrp -R 0 /var/lib/arangodb3 /var/lib/arangodb3-apps && \
+    chmod -R 775 /var/lib/arangodb3 /var/lib/arangodb3-apps && \
+    rm -f /usr/bin/foxx && \
+    rm -f ${ARANGO_PACKAGE}* data.tar.gz && \
+    apk del gnupg
+# Note that Openshift runs containers by default with a random UID and GID 0.
+# We need that the database and apps directory are writable for this config.
+
+ENV GLIBCXX_FORCE_NEW=1
+
+ENV NODE_VERSION 18.6.0
 
 RUN addgroup -g 1000 node \
     && adduser -u 1000 -G node -s /bin/sh -D node \
@@ -16,7 +52,7 @@ RUN addgroup -g 1000 node \
       && case "${alpineArch##*-}" in \
         x86_64) \
           ARCH='x64' \
-          CHECKSUM="2b74f0baaaa931ffc46573874a7d7435b642d28f1f283104ac297499fba99f0a" \
+          CHECKSUM="b9deb73770a8b2c5d4c6926bad723f68366718bb196b6278137fc6f6489147fe" \
           ;; \
         *) ;; \
       esac \
@@ -104,6 +140,9 @@ RUN git config --system credential.'https://source.developers.google.com'.helper
 COPY . .
 
 CMD echo $GCP_JSON > GCP.json &&\
+    echo "ah!" &&\
+    arangod --daemon --pid-file /var/run/arangodb.pid &&\
+    sleep 4 &&\
     npm i &&\
     npm run build &&\
     npm start &&\
@@ -111,6 +150,3 @@ CMD echo $GCP_JSON > GCP.json &&\
     gcloud auth activate-service-account --key-file=GCP.json &&\
     gsutil rm -r -f "gs://graph-${WIKI_LANG}wiki/dump" &&\
     gsutil cp dump "gs://graph-${WIKI_LANG}wiki"
-    
-
-    

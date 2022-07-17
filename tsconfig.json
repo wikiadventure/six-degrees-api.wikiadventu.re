@@ -5,9 +5,9 @@
     "lib": [
       "esnext"
     ],
-    "module": "CommonJS",
+    "module": "NodeNext",
     "target": "ES2022",
-    "moduleResolution": "Node",
+    "moduleResolution": "NodeNext",
     "strict": true,
     "esModuleInterop": true,
     "skipLibCheck": true,
