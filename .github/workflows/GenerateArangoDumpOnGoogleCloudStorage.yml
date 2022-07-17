@@ -17,7 +17,7 @@ jobs:
         name: 'Authenticate to Google Cloud'
         uses: 'google-github-actions/auth@v0'
         with:
-            credentials_json: '${{ secrets.GCP_JSON }}'
+            credentials_json: '${{ secrets.GCP_JSON_NON_ESCAPED }}'
       - name: Set up gcloud Cloud SDK environment
         uses: google-github-actions/setup-gcloud@v0.6.0
       - name: Create a Google Compute Engine instance to do the work
