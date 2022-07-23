@@ -17,7 +17,7 @@ jobs:
         name: 'Authenticate to Google Cloud'
         uses: 'google-github-actions/auth@v0'
         with:
-            credentials_json: '${{ secrets.GCP_JSON }}'
+            credentials_json: '${{ secrets.GCP_JSON_NON_ESCAPED }}'
       - name: Set up gcloud Cloud SDK environment
         uses: google-github-actions/setup-gcloud@v0.6.0
       - name: Create a Google Compute Engine instance to do the work
@@ -29,6 +29,6 @@ jobs:
           --boot-disk-size=250GB --boot-disk-type=pd-balanced --boot-disk-device-name=instance-1 \
           --container-image=docker.io/sacramentix1225/generate-wiki-graph:latest --container-restart-policy=never \
           --container-privileged \
-          --container-env=WIKI_LANG=${{ github.event.inputs.WIKI_LANG }},GCP_JSON=${{ secrets.GCP_JSON }} \
+          --container-env=^,@^GCP_JSON=${{ secrets.GCP_JSON }},@WIKI_LANG=${{ github.event.inputs.WIKI_LANG }} \
           --no-shielded-secure-boot --shielded-vtpm --shielded-integrity-monitoring \
           --labels=container-vm=cos-stable-97-16919-103-10
