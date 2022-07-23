@@ -4,10 +4,10 @@ import { parsePageLinksDump } from "@process/pageLinks";
 import { parseRedirectDump } from "@process/redirect";
 import { Database } from 'arangojs';
 
-export const max_group_per_request = parseInt(process.env['MAX_GROUP_PER_REQUEST'] || "40000");
+export const max_group_per_request = parseInt(process.env['MAX_GROUP_PER_REQUEST'] || "20000");
 
 export const lang = process.env['WIKI_LANG'];
-const DB_URL = process.env['DB_URL'] || "http://localhost:8529";
+const DB_URL = "tcp://127.0.0.1:8529";
 const DB_USERNAME = process.env['DB_USERNAME'];
 const DB_PASSWORD = process.env['DB_PASSWORD'];
 
@@ -39,6 +39,5 @@ async function main() {
 }
 
 main();
-
 
 export  {}

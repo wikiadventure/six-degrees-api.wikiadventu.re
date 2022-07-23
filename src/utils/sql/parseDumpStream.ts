@@ -1,12 +1,8 @@
 import { exists } from "@utils";
-import { mapSync, split } from "event-stream";
 import { lang } from "../../index";
-import { createReadStream, ReadStream } from 'node:fs';
 import { createGunzip } from 'node:zlib';
-import { Dispatcher, pipeline } from 'undici';
-import { Readable, Stream } from "node:stream";
-import got from "got/dist/source/";
-import type Request from "got/dist/source/core/index";
+import { Agent, fetch, Response } from 'undici';
+import { Readable, Writable } from "node:stream";
 
 
 export class SqlDumpParser {
@@ -17,7 +13,7 @@ export class SqlDumpParser {
     lastChunckPromise = Promise.resolve();
     path:string;
     url:string;
-    stream!:Request;
+    stream!:Readable;
 
     constructor(kind:string) {
         this.path = `cache/${lang}wiki-lastest-${kind}`;
@@ -27,52 +23,51 @@ export class SqlDumpParser {
     async process() {
         const inCache = await exists(this.path);
         // inCache ? createReadStream(this.path) :
-        this.stream = await got.stream(this.url);//await pipeline(this.url, {});
-        // this.stream.
-
-        // const b = new Stream.Readable(this.stream);
         
-        // const t = got.s
-        await new Promise<void>((resolve, reject)=>{
-            this.stream
-            .pipe(createGunzip())
-            .pipe(split())          
-            .pipe(
-                mapSync(async (line: string) => {
-                    for (const char of line) {
-                        const wasInParenthesis = this.inParenthesis;
-                        if (!this.escape) {
-                            if (char == "(") {
-                                if (!this.inParenthesis) {
-                                    this.inParenthesis = true;
-                                }
-                            } else if (this.inParenthesis && char =="'") {
-                                this.inString = !this.inString;
-                            } else if (this.inParenthesis && !this.inString && char == ")") {
-                                this.inParenthesis = false;
-                            } else if (this.inString && char == "\\") {
-                                this.escape = true;
-                            }
-                        } else {
-                            this.escape = false;
+        
+
+        await new Promise<void>(async (processComplete, _)=>{
+            let bytesRead = 0;
+            const unzip = createGunzip();
+            const download = async () => {
+                await new Promise<void>(async (resolve, reject)=>{
+                    const data = await fetch(this.url,{
+                        headers: {
+                            "Accept-Encoding": "gzip",
+                            "Range": `bytes=${bytesRead}-`
                         }
-                        if (wasInParenthesis) {
-                            if (this.inParenthesis) {
-                                if (char != "\n" && char != "\r") {
-                                    this.buffer += char;
-                                }
-                            } else {
-                                await this.processChunk(this.buffer);
-                                this.buffer = ""
-                            }
-                        }
+                    }).catch(e=>{
+                        console.log(e);
+                        download();
+                    });
+                    if (data?.body == null) {
+                        return;
                     }
-                    
-                }).on('end', async ()=> {
-                    await this.lastChunckPromise;
-                    resolve()
+                    this.stream = Readable.fromWeb(data.body);
+                    this.stream.on("error",e=>{
+                        console.log("On Error : ", e);
+                        download();
+                    }).on("data", (data:Buffer)=>{
+                        bytesRead+=data.byteLength;
+                    });
+                    this.stream
+                    .pipe(unzip)
+                    .pipe(
+                        new Writable({
+                            write: async (chunk, encoding, next) =>  {
+                                await this.parseChunk(chunk);
+                                next();
+                            },
+                        })
+                        .on("finish",async ()=>{
+                            await this.lastChunckPromise;
+                            processComplete();
+                            resolve();
+                        })       
+                    );
                 })
-            );
+            }
+            download();
         })
     }
 
@@ -80,6 +75,36 @@ export class SqlDumpParser {
 
     }
 
+    async parseChunk(chunk:Buffer) {
+        for (const char of chunk.toString()) {
+            const wasInParenthesis = this.inParenthesis;
+            if (!this.escape) {
+                if (char == "(") {
+                    if (!this.inParenthesis) {
+                        this.inParenthesis = true;
+                    }
+                } else if (this.inParenthesis && char =="'") {
+                    this.inString = !this.inString;
+                } else if (this.inParenthesis && !this.inString && char == ")") {
+                    this.inParenthesis = false;
+                } else if (this.inString && char == "\\") {
+                    this.escape = true;
+                }
+            } else {
+                this.escape = false;
+            }
+            if (wasInParenthesis) {
+                if (this.inParenthesis) {
+                    if (char != "\n" && char != "\r") {
+                        this.buffer += char;
+                    }
+                } else {
+                    await this.processChunk(this.buffer);
+                    this.buffer = ""
+                }
+            }
+        }
+    }
 }
 
 export function parseQuote(s:string, index:number):[string, number] {

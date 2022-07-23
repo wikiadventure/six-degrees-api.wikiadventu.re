@@ -12,6 +12,7 @@ export async function parsePageDump() {
     } catch(e) {
 
     }
+    // return
     console.log("Page collection created");
     console.log("page dump arango transfert started");
     const parser = new PageSqlDumpParser(langDb, page);
@@ -60,10 +61,8 @@ class PageSqlDumpParser extends SqlDumpParser {
             this.stream.resume();
         }
         this.total_parsed++;
-        if (this.total_parsed%10000 == 0) {
-            process.stdout.clearLine(0);
-            process.stdout.cursorTo(0);
-            process.stdout.write(`Page -> ${this.total_parsed} insert completed , Memory used : ${process.memoryUsage().heapUsed / 1024 / 1024} mo`);
+        if (this.total_parsed%1_000_000 == 0) {
+            console.log(`Page -> ${this.total_parsed} insert completed , Memory used : ${process.memoryUsage().heapUsed / 1024 / 1024} mo`);
         }
     }
 

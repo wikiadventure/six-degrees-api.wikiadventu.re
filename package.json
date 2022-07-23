@@ -7,6 +7,7 @@
     "watch-error": "tsc -w --noEmit",
     "dev": "nodemon --config nodemon.json",
     "build": "swc src -d build",
+    "debug": "node --inspect-brk=0.0.0.0:9229 build",
     "start": "node build"
   },
   "author": "",
@@ -14,9 +15,8 @@
   "dependencies": {
     "arangojs": "^7.7.0",
     "dotenv": "^16.0.1",
-    "event-stream": "^4.0.1",
     "got": "^11.8.5",
-    "undici": "^5.7.0"
+    "undici": "^5.8.0"
   },
   "devDependencies": {
     "@types/event-stream": "^4.0.0",

@@ -33,8 +33,7 @@ class PageLinkSqlDumpParser extends SqlDumpParser {
     override async processChunk(s:string) {
         const fromIndex = s.indexOf(",");
         if (fromIndex == -1 ) return;
-        const from = 
-        parseInt(s.slice(0,fromIndex));
+        const from = parseInt(s.slice(0,fromIndex));
         if (isNaN(from)) return;
         const namespaceIndex = s.indexOf(",",fromIndex+1);
         if (namespaceIndex == -1 ) return;
@@ -57,10 +56,8 @@ class PageLinkSqlDumpParser extends SqlDumpParser {
             this.stream.resume();
         }
         this.total_parsed++;
-        if (this.total_parsed%100_000 == 0) {
-            process.stdout.clearLine(0);
-            process.stdout.cursorTo(0);
-            process.stdout.write(`Pagelink -> ${this.total_parsed} insert completed`);
+        if (this.total_parsed%1_000_000 == 0) {
+            console.log(`Pagelink -> ${this.total_parsed} insert completed, Memory used : ${process.memoryUsage().heapUsed / 1024 / 1024} mo`);
         }
     }
 

@@ -9,7 +9,10 @@
 			"problemMatcher": [
 				{
 					"base": "$tsc",
-					"fileLocation":["relative", "${workspaceFolder}/src"],
+					"fileLocation": [
+						"relative",
+						"${workspaceFolder}/src"
+					],
 					"background": {
 						"activeOnStart": true,
 						"beginsPattern": "[nodemon] starting",
@@ -17,6 +20,23 @@
 					}
 				}
 			]
-		}
+		},
+		{
+			"type": "docker-run",
+			"label": "docker-run: debug",
+			"dependsOn": ["docker-build"],
+			"dockerRun": {
+				"env": {
+					"DEBUG": "*"
+				}
+			},
+			"options": {
+			
+			},
+			"node": {
+				
+			  	"enableDebugging": true
+			}
+		  }
 	]
 }

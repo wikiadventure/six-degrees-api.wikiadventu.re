@@ -142,13 +142,13 @@ WORKDIR /project
 
 COPY . .
 
-EXPOSE 8529
+EXPOSE 8529 9229
 
 CMD echo $GCP_JSON > GCP.json &&\
     arangod --daemon --pid-file /var/run/arangodb.pid &&\
     npm i &&\
     npm run build &&\
-    npm start &&\
+    npm run debug &&\
     arangodump --output-directory "dump" --server.database "${WIKI_LANG}wiki" &&\
     gcloud auth activate-service-account --key-file=GCP.json &&\
     gsutil rm -r -f "gs://graph-${WIKI_LANG}wiki" || true &&\

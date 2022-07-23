@@ -12,6 +12,7 @@ export async function parseRedirectDump() {;
     } catch(e) {
 
     }
+    // return;
     console.log("Redirect collection created");
     console.log("Redirect dump arango transfert started");
     const parser = new RedirectSqlDumpParser(langDb);
@@ -58,10 +59,8 @@ class RedirectSqlDumpParser extends SqlDumpParser {
             this.stream.resume();
         }
         this.total_parsed++;
-        if (this.total_parsed%100_000 == 0) {
-            process.stdout.clearLine(0);
-            process.stdout.cursorTo(0);
-            process.stdout.write(`Redirect -> ${this.total_parsed} insert completed`);
+        if (this.total_parsed%1_000_000 == 0) {
+            console.log(`Redirect -> ${this.total_parsed} insert completed, Memory used : ${process.memoryUsage().heapUsed / 1024 / 1024} mo`);
         }
     }
 
