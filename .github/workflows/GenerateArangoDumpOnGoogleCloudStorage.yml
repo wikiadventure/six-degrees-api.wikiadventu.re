@@ -23,7 +23,7 @@ jobs:
       - name: Create a Google Compute Engine instance to do the work
         run: |
           gcloud compute instances create-with-container generate-wiki-graph --project=sixdegreesofwikiadventure \
-          --zone=europe-west9-a --machine-type=n2d-standard-8 --network-interface=network-tier=PREMIUM,subnet=default \
+          --zone=europe-west9-a --machine-type=n2-standard-8 --network-interface=network-tier=PREMIUM,subnet=default \
           --maintenance-policy=MIGRATE --provisioning-model=STANDARD \
           --service-account=six-degrees-of-wiki-adventure@sixdegreesofwikiadventure.iam.gserviceaccount.com \
           --scopes=https://www.googleapis.com/auth/cloud-platform \
