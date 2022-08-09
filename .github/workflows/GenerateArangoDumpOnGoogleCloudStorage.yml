@@ -1,4 +1,4 @@
-name: Generate ${{ github.event.inputs.WIKI_LANG }}wiki arangodump on Google Cloud
+name: Generate wiki arangodump on Google Cloud
 
 on:
   workflow_dispatch:
