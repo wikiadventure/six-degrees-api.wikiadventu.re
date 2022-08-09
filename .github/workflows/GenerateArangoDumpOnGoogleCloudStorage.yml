@@ -30,7 +30,7 @@ jobs:
           --tags=http-server,https-server --image=projects/cos-cloud/global/images/cos-stable-97-16919-103-16 \
           --boot-disk-size=250GB --boot-disk-type=pd-ssd --boot-disk-device-name=generate-wiki-graph \
           --container-image=docker.io/sacramentix1225/generate-wiki-graph:latest --container-restart-policy=always \
-          --container-privileged \
+          --container-privileged --container-mount-host-path=host-path=/var/run/docker.sock,mode=rw,mount-path=/var/run/docker.sock \
           --container-env=^,@^GCP_JSON=${{ secrets.GCP_JSON }},@WIKI_LANG=${{ github.event.inputs.WIKI_LANG }} \
           --no-shielded-secure-boot --shielded-vtpm --shielded-integrity-monitoring \
           --labels=container-vm=cos-stable-97-16919-103-16
