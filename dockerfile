@@ -1,11 +1,17 @@
+###################################### Base image ######################################
 
+FROM docker:dind
 
-FROM alpine:3.14
-
-ENV ARANGO_NO_AUTH 1
-ENV NODE_OPTIONS=--max_old_space_size=16384
+######################################     ENV    ######################################
 
 ENV ARANGO_VERSION 3.9.2
+ENV ARANGO_NO_AUTH 1
+ENV NODE_OPTIONS=--max_old_space_size=16384
+ENV NODE_VERSION 18.6.0
+
+###################################### Arango db  ######################################
+
+
 ENV ARANGO_URL https://download.arangodb.com/arangodb39/DEBIAN/amd64
 ENV ARANGO_PACKAGE arangodb3_${ARANGO_VERSION}-1_amd64.deb
 ENV ARANGO_PACKAGE_URL ${ARANGO_URL}/${ARANGO_PACKAGE}
@@ -41,7 +47,7 @@ RUN apk add --no-cache gnupg pwgen binutils numactl numactl-tools nodejs yarn &&
 
 ENV GLIBCXX_FORCE_NEW=1
 
-ENV NODE_VERSION 18.6.0
+######################################  Node js   ######################################
 
 RUN addgroup -g 1000 node \
     && adduser -u 1000 -G node -s /bin/sh -D node \
@@ -115,6 +121,8 @@ RUN addgroup -g 1000 node \
   && node --version \
   && npm --version
 
+##################################### Google Cloud #####################################
+
 ARG CLOUD_SDK_VERSION=393.0.0
 ENV CLOUD_SDK_VERSION=$CLOUD_SDK_VERSION
 ENV PATH /google-cloud-sdk/bin:$PATH
@@ -138,19 +146,64 @@ RUN ARCH=`cat /tmp/arch` && apk --no-cache add \
     gcloud --version
 RUN git config --system credential.'https://source.developers.google.com'.helper gcloud.sh
 
+# #######################################  Docker  #######################################
+
+# RUN apk add docker
+
+#######################################  Script  #######################################
+
 WORKDIR /project
 
 COPY . .
 
+# WORKDIR /project/sql-dump-to-arango
+
 EXPOSE 8529
 
-CMD echo $GCP_JSON > GCP.json &&\
-    arangod --daemon --pid-file /var/run/arangodb.pid &&\
-    npm i &&\
-    npm run build &&\
-    npm start &&\
-    arangodump --output-directory "dump" --server.database "${WIKI_LANG}wiki" &&\
-    gcloud auth activate-service-account --key-file=GCP.json &&\
-    gsutil rm -r -f "gs://graph-${WIKI_LANG}wiki" || true &&\
-    gsutil mb -p sixdegreesofwikiadventure -l EUROPE-WEST9 "gs://graph-${WIKI_LANG}wiki" &&\
-    gsutil cp -r dump "gs://graph-${WIKI_LANG}wiki"
+CMD \
+  cd /project/sql-dump-to-arango &&\
+  # Copy the GCP credential to GCP.json file from the ENV
+  echo $GCP_JSON > GCP.json &&\
+  # Connect to Google Cloud
+  gcloud auth activate-service-account --key-file=GCP.json &&\
+  # Start Arango db in background
+  arangod --daemon --pid-file /var/run/arangodb.pid &&\
+  # Build and run the dump parser with Node js
+  npm i &&\
+  npm run build &&\
+  npm start &&\
+  # Import link in arangoDB via a csv created by Node js
+  (arangoimport --server.authentication false --from-collection-prefix "page/" --to-collection-prefix "page/" \
+  --on-duplicate ignore --type csv --auto-rate-limit --file "importLinks.csv" \
+  --server.database "${WIKI_LANG}wiki" --collection "links" || true) &&\
+  # Generate a dump of the 'final' Arango database
+  (arangodump --server.authentication false --output-directory "/project/serverless-docker/dump" --server.database "${WIKI_LANG}wiki" || true) &&\
+  # # Drop the  Google cloud storage
+  # (gsutil rm -r -f "gs://graph-${WIKI_LANG}wiki" || true) &&\
+  # # Recreate it 
+  # (gsutil mb -p sixdegreesofwikiadventure -l EUROPE-WEST9 "gs://graph-${WIKI_LANG}wiki" || true) &&\
+  # # Transfer the dump folder to the stoarge
+  # gsutil cp -r "/project/serverless-docker/dump" "gs://graph-${WIKI_LANG}wiki" &&\
+  # echo "Arango dump successfully exported to Google cloud storage" &&\
+  # Start docker
+  # (/usr/local/bin/dockerd-entrypoint.sh & sleep 20) &&\
+  # Login to docker hub
+  docker login -u $DOCKER_USERNAME -p $DOCKER_PASSWORD &&\
+  # cd to start building a image for cloud run
+  cd /project/serverless-docker &&\
+  # Build the image for the current lang
+  docker build -f dockerfile . --build-arg wiki_lang=${WIKI_LANG} -t sacramentix1225/${WIKI_LANG}wiki-graph &&\
+  # Push it to docker hub
+  docker push sacramentix1225/${WIKI_LANG}wiki-graph &&\
+  # Configure to push to GCR hub too
+  gcloud auth configure-docker &&\
+  # Configure to push to GCR hub too
+  docker tag sacramentix1225/${WIKI_LANG}wiki-graph eu.gcr.io/sixdegreesofwikiadventure/${WIKI_LANG}wiki-graph &&\
+  # Push to GCR.io
+  docker push eu.gcr.io/sixdegreesofwikiadventure/${WIKI_LANG}wiki-graph &&\
+  # Create a new Google Cloud Run
+  gcloud run deploy ${WIKI_LANG}wiki-graph-serverless --image=eu.gcr.io/sixdegreesofwikiadventure/${WIKI_LANG}wiki-graph:latest \
+  --cpu=2 --max-instances=15 --memory=2Gi --port=8080 --allow-unauthenticated \
+  --region=europe-west9 --project=sixdegreesofwikiadventure &&\
+  # Delete the Instance running this script
+  gcloud compute instances delete --zone europe-west9-a $HOSTNAME

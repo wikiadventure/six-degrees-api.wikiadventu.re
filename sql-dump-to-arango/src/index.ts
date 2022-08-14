@@ -4,14 +4,14 @@ import { parsePageLinksDump } from "@process/pageLinks";
 import { parseRedirectDump } from "@process/redirect";
 import { Database } from 'arangojs';
 
-export const max_group_per_request = parseInt(process.env['MAX_GROUP_PER_REQUEST'] || "20000");
+export const max_group_per_request = parseInt(process.env['MAX_GROUP_PER_REQUEST'] || "16384");
 
 export const lang = process.env['WIKI_LANG'];
 const DB_URL = "tcp://127.0.0.1:8529";
 const DB_USERNAME = process.env['DB_USERNAME'];
 const DB_PASSWORD = process.env['DB_PASSWORD'];
 
-export const db = new Database(DB_USERNAME != null ? {
+const db = new Database(DB_USERNAME != null ? {
     url: DB_URL,
     auth: {
         username: DB_USERNAME,
@@ -31,13 +31,25 @@ async function main() {
     }
     langDb = db.database(`${lang}wiki`);
     console.log("Start Parsing dump to arango db");
+
     await parsePageDump();
     await parseRedirectDump();
     await parsePageLinksDump();
+    try {
+        await langDb.graph("wikiGraph").create([{
+            collection: "links",
+            from: ["page"],
+            to: ["page"],
+            
+        }]);
+    } catch(e) {
+            
+    }
     
     console.log("Parsing completed !");
 }
 
 main();
+
 
 export  {}

@@ -1,11 +1,19 @@
+###################################### Base image ######################################
 
+FROM alpine:3.16
 
-FROM alpine:3.14
+###################################### ENV & ARG  ######################################
 
-ENV ARANGO_NO_AUTH 1
-ENV NODE_OPTIONS=--max_old_space_size=16384
+ARG wiki_lang
 
 ENV ARANGO_VERSION 3.9.2
+ENV ARANGO_NO_AUTH 1
+ENV WIKI_LANG=$wiki_lang
+ENV NODE_VERSION 18.6.0
+
+###################################### Arango db  ######################################
+
+
 ENV ARANGO_URL https://download.arangodb.com/arangodb39/DEBIAN/amd64
 ENV ARANGO_PACKAGE arangodb3_${ARANGO_VERSION}-1_amd64.deb
 ENV ARANGO_PACKAGE_URL ${ARANGO_URL}/${ARANGO_PACKAGE}
@@ -41,7 +49,7 @@ RUN apk add --no-cache gnupg pwgen binutils numactl numactl-tools nodejs yarn &&
 
 ENV GLIBCXX_FORCE_NEW=1
 
-ENV NODE_VERSION 18.6.0
+######################################  Node js   ######################################
 
 RUN addgroup -g 1000 node \
     && adduser -u 1000 -G node -s /bin/sh -D node \
@@ -115,46 +123,29 @@ RUN addgroup -g 1000 node \
   && node --version \
   && npm --version
 
-ARG CLOUD_SDK_VERSION=393.0.0
-ENV CLOUD_SDK_VERSION=$CLOUD_SDK_VERSION
-ENV PATH /google-cloud-sdk/bin:$PATH
-RUN if [ `uname -m` = 'x86_64' ]; then echo -n "x86_64" > /tmp/arch; else echo -n "arm" > /tmp/arch; fi;
-RUN ARCH=`cat /tmp/arch` && apk --no-cache add \
-        curl \
-        python3 \
-        py3-crcmod \
-        py3-openssl \
-        bash \
-        libc6-compat \
-        openssh-client \
-        git \
-        gnupg \
-    && curl -O https://dl.google.com/dl/cloudsdk/channels/rapid/downloads/google-cloud-sdk-${CLOUD_SDK_VERSION}-linux-${ARCH}.tar.gz && \
-    tar xzf google-cloud-sdk-${CLOUD_SDK_VERSION}-linux-${ARCH}.tar.gz && \
-    rm google-cloud-sdk-${CLOUD_SDK_VERSION}-linux-${ARCH}.tar.gz && \
-    gcloud config set core/disable_usage_reporting true && \
-    gcloud config set component_manager/disable_update_check true && \
-    gcloud config set metrics/environment github_docker_image && \
-    gcloud --version
-RUN git config --system credential.'https://source.developers.google.com'.helper gcloud.sh
 
 WORKDIR /project
 
-COPY . .
+COPY  . .
+
+# EXPOSE 8529
+
+RUN arangod --daemon --pid-file /var/run/arangodb.pid &&\
+    sleep 5 &&\
+    arangorestore --server.authentication false --create-database --force-same-database --server.database "${WIKI_LANG}wiki" --input-directory "dump" &&\
+    arangosh --server.authentication false --javascript.execute-string \
+    "db._useDatabase('${WIKI_LANG}wiki');require('@arangodb/general-graph')._create('wikiGraph', [{collection: 'links',from: ['page'],to: ['page']}]);" 
+
+
+RUN npm i
+
+RUN npm run build
+
+RUN rm tsconfig.json &&\
+    rm -r src &&\
+    rm -r dump &&\
+    rm .swcrc
 
 EXPOSE 8529 9229
 
-CMD echo $GCP_JSON > GCP.json &&\
-    arangod --daemon --pid-file /var/run/arangodb.pid &&\
-    npm i &&\
-    npm run build &&\
-    npm run debug &&\
-    arangoimport --server.authentication false --from-collection-prefix page/ --to-collection-prefix page/ \
-    --on-duplicate ignore --type csv --auto-rate-limit true --file "importLinks.csv" \
-    --server.database "${WIKI_LANG}wiki" --collection "links" &&\
-    arangodump --output-directory "dump" --server.database "${WIKI_LANG}wiki" &&\
-    gcloud auth activate-service-account --key-file=GCP.json &&\
-    gsutil rm -r -f "gs://graph-${WIKI_LANG}wiki" &&\
-    gsutil mb -p sixdegreesofwikiadventure -l EUROPE-WEST9 "gs://graph-${WIKI_LANG}wiki" &&\
-    gsutil cp -r dump "gs://graph-${WIKI_LANG}wiki" &&\
-    echo "Arango dump successfully exported to Google cloud storage"
+CMD npm start

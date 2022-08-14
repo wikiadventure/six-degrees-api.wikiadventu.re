@@ -15,17 +15,10 @@
         "parser": {
             "syntax": "typescript"
         }
-        // we remove minify it seems to impact perf a lot x100 on foreach loop with null verification
-        // ,
-        // "minify": {
-        //     "mangle": true,
-        //     "compress": true
-        // }
     },
-    // "minify": true,
     "env": {
         "targets": {
-            "node": 16
+            "node": 18
         }
     }
 }

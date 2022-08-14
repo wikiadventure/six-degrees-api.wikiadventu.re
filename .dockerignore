@@ -1,5 +1,12 @@
-build
-cache
-node_modules
 .env
 .env.docker
+.env.sample
+serverless-docker/dump
+serverless-docker/build
+serverless-docker/node_modules
+sql-dump-to-arango/build
+sql-dump-to-arango/cache
+sql-dump-to-arango/node_modules
+.github
+.vscode
+.git
