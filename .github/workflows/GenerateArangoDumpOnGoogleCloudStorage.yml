@@ -1,4 +1,4 @@
-name: Generate arangodump on Google Cloud Storage
+name: Generate wiki arangodump on Google Cloud
 
 on:
   workflow_dispatch:
@@ -22,13 +22,16 @@ jobs:
         uses: google-github-actions/setup-gcloud@v0.6.0
       - name: Create a Google Compute Engine instance to do the work
         run: |
-          gcloud compute instances create-with-container generate-wiki-graph-${{ github.event.inputs.WIKI_LANG }} --project=sixdegreesofwikiadventure \
-          --zone=europe-west9-a --machine-type=n2-standard-4 --network-interface=network-tier=PREMIUM,subnet=default \
-          --maintenance-policy=MIGRATE --provisioning-model=STANDARD --no-service-account --no-scopes \
-          --tags=https-server --image=projects/cos-cloud/global/images/cos-stable-97-16919-103-10 \
-          --boot-disk-size=250GB --boot-disk-type=pd-balanced --boot-disk-device-name=instance-1 \
-          --container-image=docker.io/sacramentix1225/generate-wiki-graph:latest --container-restart-policy=never \
-          --container-privileged \
-          --container-env=^,@^GCP_JSON=${{ secrets.GCP_JSON }},@WIKI_LANG=${{ github.event.inputs.WIKI_LANG }} \
+          gcloud compute instances create-with-container generate-${{ github.event.inputs.WIKI_LANG }}wiki-graph --project=sixdegreesofwikiadventure \
+          --zone=europe-west9-a --machine-type=n2-standard-8 --network-interface=network-tier=PREMIUM,subnet=default \
+          --maintenance-policy=MIGRATE --provisioning-model=STANDARD \
+          --service-account=six-degrees-of-wiki-adventure@sixdegreesofwikiadventure.iam.gserviceaccount.com \
+          --scopes=https://www.googleapis.com/auth/cloud-platform \
+          --tags=http-server,https-server --image=projects/cos-cloud/global/images/cos-stable-97-16919-103-16 \
+          --boot-disk-size=250GB --boot-disk-type=pd-ssd --boot-disk-device-name=generate-wiki-graph \
+          --container-image=docker.io/sacramentix1225/generate-wiki-graph:latest --container-restart-policy=always \
+          --container-privileged --container-mount-host-path=host-path=/var/run/docker.sock,mode=rw,mount-path=/var/run/docker.sock \
+          --container-env=^,@^GCP_JSON=${{ secrets.GCP_JSON }},@WIKI_LANG=${{ github.event.inputs.WIKI_LANG }},\
+          @DOCKER_USERNAME=${{ secrets.DOCKER_USERNAME }},@DOCKER_PASSWORD=${{ secrets.DOCKER_PASSWORD }} \
           --no-shielded-secure-boot --shielded-vtpm --shielded-integrity-monitoring \
-          --labels=container-vm=cos-stable-97-16919-103-10
+          --labels=container-vm=cos-stable-97-16919-103-16
