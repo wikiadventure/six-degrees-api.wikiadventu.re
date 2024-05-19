@@ -6,15 +6,18 @@
     
     "configurations": [
         {
-            "name": "Debug ts-nodemon back",
-            "type": "node",
-            "request": "attach",
-            "restart": true,
-            "port": 20019,
-            "sourceMaps": true,
-            "localRoot": "${workspaceRoot}",
-            "remoteRoot": "${workspaceRoot}",
-            "preLaunchTask": "debug npm dev"
+            "cwd": "${workspaceFolder}/sql-dump-to-memgraph",
+            "command": "npm run ts-node -- ${file}",
+            "name": "Debug current file",
+            "request": "launch",
+            "type": "node-terminal"
+        },
+        {
+            "cwd": "${workspaceFolder}/sql-dump-to-arango-new",
+            "command": "npm run ts-node -- ${file}",
+            "name": "Debug current file",
+            "request": "launch",
+            "type": "node-terminal"
         },
         {
             // 1. Type of application to attach to

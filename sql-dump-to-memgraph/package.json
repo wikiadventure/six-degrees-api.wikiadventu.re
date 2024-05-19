@@ -14,7 +14,7 @@
     "node": "22.1.0"
   },
   "dependencies": {
-    "arangojs": "^8.8.1",
+    "neo4j-driver": "^5.20.0",
     "zod": "^3.23.8"
   }
 }

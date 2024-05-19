@@ -10,23 +10,29 @@ ENV NODE_OPTIONS=--max_old_space_size=16384
 ENV NODE_VERSION 18.6.0
 
 ###################################### Arango db  ######################################
+FROM alpine:3.17
+MAINTAINER Frank Celler <info@arangodb.com>
 
-
-ENV ARANGO_URL https://download.arangodb.com/arangodb39/DEBIAN/amd64
-ENV ARANGO_PACKAGE arangodb3_${ARANGO_VERSION}-1_amd64.deb
-ENV ARANGO_PACKAGE_URL ${ARANGO_URL}/${ARANGO_PACKAGE}
-ENV ARANGO_SIGNATURE_URL ${ARANGO_PACKAGE_URL}.asc
+ENV ARANGO_VERSION 3.12.0.2
 
 # see
-#   https://www.arangodb.com/docs/3.9/programs-arangod-server.html#managing-endpoints
-#   https://www.arangodb.com/docs/3.9/programs-arangod-log.html
+#   https://docs.arangodb.com/3.12/components/arangodb-server/options/#--serverendpoint
+#   https://docs.arangodb.com/3.12/components/arangodb-server/options/#log
 
-RUN apk add --no-cache gnupg pwgen binutils numactl numactl-tools nodejs yarn && \
-    yarn global add foxx-cli@2.0.1 && \
-    apk del yarn && \
-    gpg --batch --keyserver keys.openpgp.org --recv-keys CD8CB0F1E0AD5B52E93F41E7EA93F5E56E751E9B && \
+RUN apk add --no-cache gnupg pwgen binutils numactl numactl-tools && \
+    gpg --batch --keyserver keys.openpgp.org --recv-keys 8003EDF6F05459984878D4A6C04AD0FD86FEC04D && \
     mkdir /docker-entrypoint-initdb.d && \
     cd /tmp                                && \
+    arch="$(apk --print-arch)"             && \
+    case "$arch" in                           \
+        x86_64)  dpkgArch='amd64'          ;; \
+        aarch64) dpkgArch='arm64'          ;; \
+        *) echo >&2 "unsupported: $arch" && exit 1 ;; \
+    esac                                   && \
+    ARANGO_URL="https://download.arangodb.com/arangodb312/DEBIAN/$dpkgArch" && \
+    ARANGO_PACKAGE="arangodb3_${ARANGO_VERSION}-1_${dpkgArch}.deb" && \
+    ARANGO_PACKAGE_URL="${ARANGO_URL}/${ARANGO_PACKAGE}" && \
+    ARANGO_SIGNATURE_URL="${ARANGO_PACKAGE_URL}.asc" && \
     wget ${ARANGO_SIGNATURE_URL}           && \
     wget ${ARANGO_PACKAGE_URL}             && \
     gpg --verify ${ARANGO_PACKAGE}.asc     && \
@@ -39,7 +45,6 @@ RUN apk add --no-cache gnupg pwgen binutils numactl numactl-tools nodejs yarn &&
         /etc/arangodb3/arangod.conf        && \
     chgrp -R 0 /var/lib/arangodb3 /var/lib/arangodb3-apps && \
     chmod -R 775 /var/lib/arangodb3 /var/lib/arangodb3-apps && \
-    rm -f /usr/bin/foxx && \
     rm -f ${ARANGO_PACKAGE}* data.tar.gz && \
     apk del gnupg
 # Note that Openshift runs containers by default with a random UID and GID 0.
@@ -47,6 +52,17 @@ RUN apk add --no-cache gnupg pwgen binutils numactl numactl-tools nodejs yarn &&
 
 ENV GLIBCXX_FORCE_NEW=1
 
+# Adjust TZ by default since tzdata package isn't present (BTS-913)
+RUN echo "UTC" > /etc/timezone
+
+# retain the database directory and the Foxx Application directory
+VOLUME ["/var/lib/arangodb3", "/var/lib/arangodb3-apps"]
+
+COPY docker-entrypoint.sh /entrypoint.sh
+
+ENTRYPOINT ["/entrypoint.sh"]
+
+#  
 ######################################  Node js   ######################################
 
 RUN addgroup -g 1000 node \
@@ -123,7 +139,7 @@ RUN addgroup -g 1000 node \
 
 ##################################### Google Cloud #####################################
 
-ARG CLOUD_SDK_VERSION=393.0.0
+ARG CLOUD_SDK_VERSION=476.0.0
 ENV CLOUD_SDK_VERSION=$CLOUD_SDK_VERSION
 ENV PATH /google-cloud-sdk/bin:$PATH
 RUN if [ `uname -m` = 'x86_64' ]; then echo -n "x86_64" > /tmp/arch; else echo -n "arm" > /tmp/arch; fi;
@@ -172,17 +188,13 @@ CMD \
   npm i &&\
   npm run build &&\
   npm start &&\
-  # Import link in arangoDB via a csv created by Node js
-  (arangoimport --server.authentication false --from-collection-prefix "page/" --to-collection-prefix "page/" \
-  --on-duplicate ignore --type csv --auto-rate-limit --file "importLinks.csv" \
-  --server.database "${WIKI_LANG}wiki" --collection "links" || true) &&\
   # Generate a dump of the 'final' Arango database
   (arangodump --server.authentication false --output-directory "/project/serverless-docker/dump" --server.database "${WIKI_LANG}wiki" || true) &&\
   # # Drop the  Google cloud storage
   # (gsutil rm -r -f "gs://graph-${WIKI_LANG}wiki" || true) &&\
   # # Recreate it 
   # (gsutil mb -p sixdegreesofwikiadventure -l EUROPE-WEST9 "gs://graph-${WIKI_LANG}wiki" || true) &&\
-  # # Transfer the dump folder to the stoarge
+  # # Transfer the dump folder to the storage
   # gsutil cp -r "/project/serverless-docker/dump" "gs://graph-${WIKI_LANG}wiki" &&\
   # echo "Arango dump successfully exported to Google cloud storage" &&\
   # Start docker
