@@ -1,4 +1,4 @@
-name: Generate wiki arangodump on Google Cloud
+name: Launch GCP compute engine to deploy Cloud run api
 
 on:
   workflow_dispatch:
