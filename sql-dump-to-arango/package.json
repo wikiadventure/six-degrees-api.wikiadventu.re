@@ -8,7 +8,7 @@
   },
   "scripts": {
     "ts-node": "node --env-file=.env --loader ts-node/esm",
-    "start": "node --env-file=.env --loader ts-node/esm index.ts"
+    "start": "node --loader ts-node/esm index.ts"
   },
   "type": "module",
   "volta": {
