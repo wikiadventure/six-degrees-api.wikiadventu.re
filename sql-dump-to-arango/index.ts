@@ -1,4 +1,4 @@
-import { parseDumpContent, sqlDumpStreamFromWeb } from "./parser/dumpParser.js";
+import { parseDumpContent, sqlDumpStream, sqlDumpStreamFromWeb } from "./parser/dumpParser.js";
 import { initLangDatabase, insertLinks, insertPages, insertRedirects } from "./arango/connection.js";
 import { createDumpProgressLogger } from "./logger/dumpProgress.js";
 import { CollectionType } from "arangojs/collection.js";
@@ -26,7 +26,7 @@ async function parseAndLoadPage() {
         await page.ensureIndex({ type: "persistent", fields: ["title"], unique: true, inBackground: true});
     } catch(e) {}
 
-    const { info, stream } = await sqlDumpStreamFromWeb("page");
+    const { info, stream } = await sqlDumpStream("page");
     let previousBatchPromise = Promise.resolve() as Promise<any>;
     let count = 0;
     let nextBatch:WikiPage[] = [];
@@ -79,7 +79,7 @@ async function parseAndLoadRedirect() {
     } catch(e) {}
 
 
-    const { info, stream } = await sqlDumpStreamFromWeb("redirect");
+    const { info, stream } = await sqlDumpStream("redirect");
     let previousBatchPromise = Promise.resolve() as Promise<any>;
     let count = 0;
     let nextBatch:{_from:string,_to:string}[] = [];
@@ -160,7 +160,7 @@ async function parseAndLoadPageLinks() {
         await link.ensureIndex({ type: "persistent", fields: [ "_from", "_to" ], unique: true, inBackground: true}).catch();
     } catch(e) {}
 
-    const { info, stream } = await sqlDumpStreamFromWeb("pagelinks");
+    const { info, stream } = await sqlDumpStream("pagelinks");
     let previousBatchPromise = Promise.resolve() as Promise<any>;
     let count = 0;
     let nextBatch:{_from:string,_to:string}[] = [];

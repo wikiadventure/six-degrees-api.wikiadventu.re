@@ -3,14 +3,15 @@ import { createGunzip, type Gunzip } from "node:zlib";
 import { createReadStream } from "node:fs";
 import { stat } from "node:fs/promises";
 import { env } from "../env.js";
+import { DecompressionStream } from "node:stream/web";
 
 export type FileType = "page" | "redirect" | "pagelinks";
 await sqlDumpStreamFromWeb("redirect");
 export async function sqlDumpStreamFromCache(fileType:FileType) {
-    const path = `./cache/${env.LANG}/${env.LANG}wiki-latest-${fileType}.sql.gz`;
+    const path = `./cache/${env.WIKI_LANG}/${env.WIKI_LANG}wiki-latest-${fileType}.sql.gz`;
     if (!existsSync(path)) {
         const writeToFile = createWriteStream(path);
-        const response = await fetch(`https://dumps.wikimedia.org/${env.LANG}wiki/latest/${env.LANG}wiki-latest-${fileType}.sql.gz`);
+        const response = await fetch(`https://dumps.wikimedia.org/${env.WIKI_LANG}wiki/latest/${env.WIKI_LANG}wiki-latest-${fileType}.sql.gz`);
         const size = parseInt(response.headers.get("Content-Length") || "0");
         let bytesDownloaded = 0;
         let lastLoggedProgress = 0;
@@ -52,9 +53,9 @@ export async function sqlDumpStreamFromCache(fileType:FileType) {
         size,
         bytesRead: 0
     }
-    const stream = createReadStream(`./cache/${env.LANG}/${env.LANG}wiki-latest-${fileType}.sql.gz`)
+    const stream = createReadStream(`./cache/${env.WIKI_LANG}/${env.WIKI_LANG}wiki-latest-${fileType}.sql.gz`)
                     .on("data", (chunk:Buffer)=> info.bytesRead+=chunk.byteLength)
-                    .pipe(gunzip) as unknown as ReadStream;
+                    .pipe(gunzip)
     stream.setEncoding("utf-8");
     return {
         info,
@@ -64,28 +65,36 @@ export async function sqlDumpStreamFromCache(fileType:FileType) {
 
 export async function sqlDumpStreamFromWeb(fileType:FileType) {
     const gunzip = createGunzip(
-        {chunkSize: 64*1024}
+        {chunkSize: 1024*1024*32 }
     );
     gunzip.setEncoding("utf-8");
+    gunzip
     const info = {
         size: 0,
         bytesRead: 0
     }
     const { promise: forFetchHeaders, resolve } = Promise.withResolvers<void>();
     async function attachFetchDownloadStream() {
-        fetch(`https://dumps.wikimedia.org/${env.LANG}wiki/latest/${env.LANG}wiki-latest-${fileType}.sql.gz`,{
+        fetch(`https://dumps.wikimedia.org/${env.WIKI_LANG}wiki/latest/${env.WIKI_LANG}wiki-latest-${fileType}.sql.gz`,{
             headers: {
                 "Accept-Encoding": "gzip",
                 "Range": `bytes=${info.bytesRead}-`
-            }
+            },
         }).then(async r => {
             if (info.size == 0) {
                 info.size = parseInt(r.headers.get("Content-Length")||"0");
                 resolve();
             }
+            
             for await (const chunk of r.body) {
                 info.bytesRead+=chunk.byteLength;
-                gunzip.write(chunk);
+                const capNotReached = gunzip.write(chunk);
+                if (!capNotReached) {
+                    const { promise: forDrain, resolve } = Promise.withResolvers<void>();
+                    gunzip.once('drain',resolve);
+                    await forDrain;
+                }
+                
             }
             gunzip.end();
         }).catch(e=>{

@@ -10,3 +10,10 @@ sql-dump-to-arango/node_modules
 .github
 .vscode
 .git
+build
+cache
+node_modules
+.env
+.env.docker
+serverless-docker/dump
+sql-dump-to-memgraph-rust

@@ -9,9 +9,9 @@ export var langDb:Database;
 
 export async function initLangDatabase() {
     try {
-        await db.createDatabase(`${env.LANG}wiki`);
+        await db.createDatabase(`${env.WIKI_LANG}wiki`);
     } catch(e) {}
-    langDb = db.database(`${env.LANG}wiki`);
+    langDb = db.database(`${env.WIKI_LANG}wiki`);
     return langDb;
 }
 

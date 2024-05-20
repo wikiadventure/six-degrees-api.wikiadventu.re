@@ -12,26 +12,35 @@ jobs:
     
     steps:
       - name: Checkout
-        uses: actions/checkout@v3.0.2
+        uses: actions/checkout@v4.1.5
       - id: 'auth'
         name: 'Authenticate to Google Cloud'
-        uses: 'google-github-actions/auth@v0'
+        uses: 'google-github-actions/auth@v2'
         with:
             credentials_json: '${{ secrets.GCP_JSON_NON_ESCAPED }}'
       - name: Set up gcloud Cloud SDK environment
-        uses: google-github-actions/setup-gcloud@v0.6.0
+        uses: google-github-actions/setup-gcloud@v2.1.0
       - name: Create a Google Compute Engine instance to do the work
         run: |
-          gcloud compute instances create-with-container generate-${{ github.event.inputs.WIKI_LANG }}wiki-graph --project=sixdegreesofwikiadventure \
-          --zone=europe-west9-a --machine-type=n2-standard-8 --network-interface=network-tier=PREMIUM,subnet=default \
-          --maintenance-policy=MIGRATE --provisioning-model=STANDARD \
-          --service-account=six-degrees-of-wiki-adventure@sixdegreesofwikiadventure.iam.gserviceaccount.com \
-          --scopes=https://www.googleapis.com/auth/cloud-platform \
-          --tags=http-server,https-server --image=projects/cos-cloud/global/images/cos-stable-97-16919-103-16 \
-          --boot-disk-size=250GB --boot-disk-type=pd-ssd --boot-disk-device-name=generate-wiki-graph \
-          --container-image=docker.io/sacramentix1225/generate-wiki-graph:latest --container-restart-policy=always \
-          --container-privileged --container-mount-host-path=host-path=/var/run/docker.sock,mode=rw,mount-path=/var/run/docker.sock \
-          --container-env=^,@^GCP_JSON=${{ secrets.GCP_JSON }},@WIKI_LANG=${{ github.event.inputs.WIKI_LANG }},\
-          @DOCKER_USERNAME=${{ secrets.DOCKER_USERNAME }},@DOCKER_PASSWORD=${{ secrets.DOCKER_PASSWORD }} \
-          --no-shielded-secure-boot --shielded-vtpm --shielded-integrity-monitoring \
-          --labels=container-vm=cos-stable-97-16919-103-16
+          gcloud compute instances create-with-container generate-wiki-graph-compute \
+            --project=sixdegreesofwikiadventure \
+            --zone=europe-west9-a \
+            --machine-type=n2-standard-2 \
+            --network-interface=network-tier=PREMIUM,stack-type=IPV4_ONLY,subnet=default \
+            --maintenance-policy=MIGRATE \
+            --provisioning-model=STANDARD \
+            --service-account=six-degrees-of-wiki-adventure@sixdegreesofwikiadventure.iam.gserviceaccount.com \
+            --scopes=https://www.googleapis.com/auth/cloud-platform \
+            --image=projects/cos-cloud/global/images/cos-101-17162-463-16 \
+            --boot-disk-size=250GB \
+            --boot-disk-type=pd-ssd \
+            --boot-disk-device-name=generate-wiki-graph \
+            --container-image=europe-west9-docker.pkg.dev/sixdegreesofwikiadventure/wiki-graph/generate-wiki-graph:latest \
+            --container-restart-policy=never \
+            --container-privileged \
+            --container-mount-host-path=host-path=/var/run/docker.sock,mode=rw,mount-path=/var/run/docker.sock \
+            --container-env=^,@^GCP_JSON=${{ secrets.GCP_JSON }},@WIKI_LANG=${{ github.event.inputs.WIKI_LANG }},@DOCKER_USERNAME=${{ secrets.DOCKER_USERNAME }},@DOCKER_PASSWORD=${{ secrets.DOCKER_PASSWORD }} \
+            --no-shielded-secure-boot \
+            --shielded-vtpm \
+            --shielded-integrity-monitoring \
+            --labels=goog-ec-src=vm_add-gcloud,container-vm=cos-101-17162-463-16

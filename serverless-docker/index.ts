@@ -19,16 +19,10 @@ app.onError((err, c) => {
   return c.json({ message: 'Internal Server Error', ok: false }, 500);
 });
 
-
-const IS_GOOGLE_CLOUD_RUN = process.env["K_SERVICE"] !== undefined;
-
 // You must listen on the port Cloud Run provides
 const port = parseInt(process.env["PORT"] || "3000");
 
-// You must listen on all IPV4 addresses in Cloud Run
-const host = IS_GOOGLE_CLOUD_RUN ? "0.0.0.0" : "127.0.0.1";
-
-// const { stderr, stdout} = await execP("arangod --daemon --pid-file /var/run/arangodb-node.pid ");
+const { stderr, stdout } = await execP("arangod --daemon --pid-file /var/run/arangodb-node.pid");
 const DB_URL = "tcp://127.0.0.1:8529";
 
 
@@ -38,9 +32,12 @@ const db = new Database({
 const lang = process.env['WIKI_LANG'] ?? "eo";
 const langDb = db.database(`${lang}wiki`);
 const isUp = new Promise<void>(async (res,_) => {
-    do { 
+    console.log(`Waiting arango...`);
+    const startTime = Date.now();
+    do {    
         try {
             await langDb.exists();
+            console.log(`Arango up (${Date.now() - startTime}ms)`);
             res();
             return;
         } catch(e) {
@@ -48,9 +45,6 @@ const isUp = new Promise<void>(async (res,_) => {
         await setTimeout(50);
     } while (true);
 });
-
-
-
 
 app.get(
     "/all-shortest-path/:start/to/:end",
@@ -62,11 +56,12 @@ app.get(
         })
     ),
     async (c, next)=>{
-
         const { start, end } = c.req.param();
+        console.log(`query from ${start} to ${end}`);
         const startPage = "page/"+start;
         const endPage = "page/"+end;
         await isUp;
+        const startTime = performance.now();
         const query = await langDb.query(`
             FOR p IN OUTBOUND ALL_SHORTEST_PATHS '${startPage}' TO '${endPage}'
                 link
@@ -75,19 +70,24 @@ app.get(
                     title: p.vertices[*].title
                 }
         `);
-        const result = await query.all();
+        const result = await query.all() as {id: string[], title: string[]}[];
+        const time = performance.now() - startTime;
+        const out = {
+            idToTitle: result.reduce<Record<number,string>>((acc, { id, title })=>{
+                    id.forEach((v,i)=>acc[Number(v)]=title[i]);
+                    return acc;
+                }, {}),
+            paths: result.map(({id})=>id.map(v=>Number(v))),
+            time
+        }
 
-        return c.json(result);
+        return c.json(out);
 });
 
+
+console.log(`Server running on port ${port}...`);
 
 export default {
   fetch: app.fetch,
   port,
-  hostname: host
-} satisfies Serve;
-
-type AllShortestPathParams = {
-    start:number,
-    end:number,
-}
+};

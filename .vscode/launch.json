@@ -8,14 +8,14 @@
         {
             "cwd": "${workspaceFolder}/sql-dump-to-memgraph",
             "command": "npm run ts-node -- ${file}",
-            "name": "Debug current file",
+            "name": "Debug memgraph file",
             "request": "launch",
             "type": "node-terminal"
         },
         {
-            "cwd": "${workspaceFolder}/sql-dump-to-arango-new",
+            "cwd": "${workspaceFolder}/sql-dump-to-arango",
             "command": "npm run ts-node -- ${file}",
-            "name": "Debug current file",
+            "name": "Debug arango file",
             "request": "launch",
             "type": "node-terminal"
         },

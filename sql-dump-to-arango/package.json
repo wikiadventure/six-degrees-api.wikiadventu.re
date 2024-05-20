@@ -7,7 +7,8 @@
     "typescript": "^5.4.5"
   },
   "scripts": {
-    "ts-node": "node --env-file=.env --loader ts-node/esm"
+    "ts-node": "node --env-file=.env --loader ts-node/esm",
+    "start": "node --env-file=.env --loader ts-node/esm index.ts"
   },
   "type": "module",
   "volta": {

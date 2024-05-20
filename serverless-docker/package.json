@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "description": "A serverless with fastify & arango db",
   "main": "index.js",
+  "type": "module",
   "scripts": {
     
   },

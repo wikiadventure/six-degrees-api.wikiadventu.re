@@ -1,19 +1,24 @@
+FROM node:22.2.0-alpine3.19 AS node
+
 ###################################### Base image ######################################
 
-FROM docker:dind
+FROM docker:26.1.3-dind-alpine3.19
 
 ######################################     ENV    ######################################
 
-ENV ARANGO_VERSION 3.9.2
+ENV ARANGO_VERSION 3.12.0.2
 ENV ARANGO_NO_AUTH 1
 ENV NODE_OPTIONS=--max_old_space_size=16384
-ENV NODE_VERSION 18.6.0
+ENV NODE_VERSION 22.1.0
+
+######################################    Node    ######################################
+
+COPY --from=node /usr/lib /usr/lib
+COPY --from=node /usr/local/lib /usr/local/lib
+COPY --from=node /usr/local/include /usr/local/include
+COPY --from=node /usr/local/bin /usr/local/bin
 
 ###################################### Arango db  ######################################
-FROM alpine:3.17
-MAINTAINER Frank Celler <info@arangodb.com>
-
-ENV ARANGO_VERSION 3.12.0.2
 
 # see
 #   https://docs.arangodb.com/3.12/components/arangodb-server/options/#--serverendpoint
@@ -55,88 +60,6 @@ ENV GLIBCXX_FORCE_NEW=1
 # Adjust TZ by default since tzdata package isn't present (BTS-913)
 RUN echo "UTC" > /etc/timezone
 
-# retain the database directory and the Foxx Application directory
-VOLUME ["/var/lib/arangodb3", "/var/lib/arangodb3-apps"]
-
-COPY docker-entrypoint.sh /entrypoint.sh
-
-ENTRYPOINT ["/entrypoint.sh"]
-
-#  
-######################################  Node js   ######################################
-
-RUN addgroup -g 1000 node \
-    && adduser -u 1000 -G node -s /bin/sh -D node \
-    && apk add --no-cache \
-        libstdc++ \
-    && apk add --no-cache --virtual .build-deps \
-        curl \
-    && ARCH= && alpineArch="$(apk --print-arch)" \
-      && case "${alpineArch##*-}" in \
-        x86_64) \
-          ARCH='x64' \
-          CHECKSUM="b9deb73770a8b2c5d4c6926bad723f68366718bb196b6278137fc6f6489147fe" \
-          ;; \
-        *) ;; \
-      esac \
-  && if [ -n "${CHECKSUM}" ]; then \
-    set -eu; \
-    curl -fsSLO --compressed "https://unofficial-builds.nodejs.org/download/release/v$NODE_VERSION/node-v$NODE_VERSION-linux-$ARCH-musl.tar.xz"; \
-    echo "$CHECKSUM  node-v$NODE_VERSION-linux-$ARCH-musl.tar.xz" | sha256sum -c - \
-      && tar -xJf "node-v$NODE_VERSION-linux-$ARCH-musl.tar.xz" -C /usr/local --strip-components=1 --no-same-owner \
-      && ln -s /usr/local/bin/node /usr/local/bin/nodejs; \
-  else \
-    echo "Building from source" \
-    # backup build
-    && apk add --no-cache --virtual .build-deps-full \
-        binutils-gold \
-        g++ \
-        gcc \
-        gnupg \
-        libgcc \
-        linux-headers \
-        make \
-        python3 \
-    # gpg keys listed at https://github.com/nodejs/node#release-keys
-    && for key in \
-      4ED778F539E3634C779C87C6D7062848A1AB005C \
-      141F07595B7B3FFE74309A937405533BE57C7D57 \
-      94AE36675C464D64BAFA68DD7434390BDBE9B9C5 \
-      74F12602B6F1C4E913FAA37AD3A89613643B6201 \
-      71DCFD284A79C3B38668286BC97EC7A07EDE3FC1 \
-      61FC681DFB92A079F1685E77973F295594EC4689 \
-      8FCCA13FEF1D0C2E91008E09770F7A9A5AE15600 \
-      C4F0DFFF4E8C1A8236409D08E73BC641CC11F4C8 \
-      890C08DB8579162FEE0DF9DB8BEAB4DFCF555EF4 \
-      C82FA3AE1CBEDC6BE46B9360C43CEC45C17AB93C \
-      DD8F2338BAE7501E3DD5AC78C273792F7D83545D \
-      A48C2BEE680E841632CD4E44F07496B3EB3C1762 \
-      108F52B48DB57BB0CC439B2997B01419BD92F80A \
-      B9E2F5981AA6E0CD28160D9FF13993A75599653C \
-    ; do \
-      gpg --batch --keyserver hkps://keys.openpgp.org --recv-keys "$key" || \
-      gpg --batch --keyserver keyserver.ubuntu.com --recv-keys "$key" ; \
-    done \
-    && curl -fsSLO --compressed "https://nodejs.org/dist/v$NODE_VERSION/node-v$NODE_VERSION.tar.xz" \
-    && curl -fsSLO --compressed "https://nodejs.org/dist/v$NODE_VERSION/SHASUMS256.txt.asc" \
-    && gpg --batch --decrypt --output SHASUMS256.txt SHASUMS256.txt.asc \
-    && grep " node-v$NODE_VERSION.tar.xz\$" SHASUMS256.txt | sha256sum -c - \
-    && tar -xf "node-v$NODE_VERSION.tar.xz" \
-    && cd "node-v$NODE_VERSION" \
-    && ./configure \
-    && make -j$(getconf _NPROCESSORS_ONLN) V= \
-    && make install \
-    && apk del .build-deps-full \
-    && cd .. \
-    && rm -Rf "node-v$NODE_VERSION" \
-    && rm "node-v$NODE_VERSION.tar.xz" SHASUMS256.txt.asc SHASUMS256.txt; \
-  fi \
-  && rm -f "node-v$NODE_VERSION-linux-$ARCH-musl.tar.xz" \
-  && apk del .build-deps \
-  # smoke tests
-  && node --version \
-  && npm --version
-
 ##################################### Google Cloud #####################################
 
 ARG CLOUD_SDK_VERSION=476.0.0
@@ -174,7 +97,7 @@ COPY . .
 
 # WORKDIR /project/sql-dump-to-arango
 
-EXPOSE 8529
+# EXPOSE 8529
 
 CMD \
   cd /project/sql-dump-to-arango &&\
@@ -186,10 +109,9 @@ CMD \
   arangod --daemon --pid-file /var/run/arangodb.pid &&\
   # Build and run the dump parser with Node js
   npm i &&\
-  npm run build &&\
   npm start &&\
   # Generate a dump of the 'final' Arango database
-  (arangodump --server.authentication false --output-directory "/project/serverless-docker/dump" --server.database "${WIKI_LANG}wiki" || true) &&\
+  # (arangodump --server.authentication false --output-directory "/project/serverless-docker/dump" --server.database "${WIKI_LANG}wiki" || true) &&\
   # # Drop the  Google cloud storage
   # (gsutil rm -r -f "gs://graph-${WIKI_LANG}wiki" || true) &&\
   # # Recreate it 
@@ -202,20 +124,22 @@ CMD \
   # Login to docker hub
   docker login -u $DOCKER_USERNAME -p $DOCKER_PASSWORD &&\
   # cd to start building a image for cloud run
-  cd /project/serverless-docker &&\
+  cd / &&\
   # Build the image for the current lang
-  docker build -f dockerfile . --build-arg wiki_lang=${WIKI_LANG} -t sacramentix1225/${WIKI_LANG}wiki-graph &&\
+  docker build -f /project/serverless-docker/dockerfile / --build-arg wiki_lang=${WIKI_LANG} -t sacramentix1225/${WIKI_LANG}wiki-graph &&\
   # Push it to docker hub
   docker push sacramentix1225/${WIKI_LANG}wiki-graph &&\
   # Configure to push to GCR hub too
-  gcloud auth configure-docker &&\
+  gcloud auth configure-docker europe-west9-docker.pkg.dev --quiet &&\
   # Configure to push to GCR hub too
-  docker tag sacramentix1225/${WIKI_LANG}wiki-graph eu.gcr.io/sixdegreesofwikiadventure/${WIKI_LANG}wiki-graph &&\
+  docker tag sacramentix1225/${WIKI_LANG}wiki-graph europe-west9-docker.pkg.dev/sixdegreesofwikiadventure/wiki-graph/${WIKI_LANG}wiki-graph &&\
   # Push to GCR.io
-  docker push eu.gcr.io/sixdegreesofwikiadventure/${WIKI_LANG}wiki-graph &&\
+  docker push europe-west9-docker.pkg.dev/sixdegreesofwikiadventure/wiki-graph/${WIKI_LANG}wiki-graph &&\
   # Create a new Google Cloud Run
-  gcloud run deploy ${WIKI_LANG}wiki-graph-serverless --image=eu.gcr.io/sixdegreesofwikiadventure/${WIKI_LANG}wiki-graph:latest \
+  gcloud run deploy ${WIKI_LANG}wiki-graph-serverless --image=europe-west9-docker.pkg.dev/sixdegreesofwikiadventure/wiki-graph/${WIKI_LANG}wiki-graph:latest \
   --cpu=2 --max-instances=15 --memory=2Gi --port=8080 --allow-unauthenticated \
   --region=europe-west9 --project=sixdegreesofwikiadventure &&\
   # Delete the Instance running this script
-  gcloud compute instances delete --zone europe-west9-a $HOSTNAME
+  export INSTANCE_NAME=$(curl -X GET http://metadata.google.internal/computeMetadata/v1/instance/name -H 'Metadata-Flavor: Google') &&\
+  export INSTANCE_ZONE=$(curl -X GET http://metadata.google.internal/computeMetadata/v1/instance/zone -H 'Metadata-Flavor: Google') &&\
+  gcloud --quiet compute instances delete $INSTANCE_NAME --zone=$INSTANCE_ZONE
