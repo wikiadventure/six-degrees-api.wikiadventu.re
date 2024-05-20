@@ -1,4 +1,4 @@
-name: Generate wiki arangodump on Google Cloud
+name: Generate Docker image for GCP compute
 
 on:
   workflow_dispatch:
