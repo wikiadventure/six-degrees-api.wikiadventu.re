@@ -1,0 +1,30 @@
+name: Generate wiki arangodump on Google Cloud
+
+on:
+  workflow_dispatch:
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4.1.5
+      - id: 'auth'
+        name: 'Authenticate to Google Cloud'
+        uses: 'google-github-actions/auth@v2'
+        with:
+            credentials_json: '${{ secrets.GCP_JSON_NON_ESCAPED }}'
+      - name: Docker Setup Buildx
+        uses: docker/setup-buildx-action@v3.3.0
+      - name: Set up gcloud Cloud SDK environment
+        uses: google-github-actions/setup-gcloud@v2.1.0
+      - name: Create a Google Compute Engine instance to do the work
+        run: |
+          docker build -t generate-wiki-graph . &&\
+          docker tag generate-wiki-graph europe-west9-docker.pkg.dev/sixdegreesofwikiadventure/wiki-graph/generate-wiki-graph &&\
+          docker tag generate-wiki-graph sacramentix1225/generate-wiki-graph &&\
+          docker login -u ${{ secrets.DOCKER_USERNAME }} -p ${{ secrets.DOCKER_PASSWORD }} &&\
+          docker push sacramentix1225/generate-wiki-graph &&\
+          gcloud auth configure-docker europe-west9-docker.pkg.dev --quiet &&\
+          docker push europe-west9-docker.pkg.dev/sixdegreesofwikiadventure/wiki-graph/generate-wiki-graph
+          
