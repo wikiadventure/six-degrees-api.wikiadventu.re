@@ -102,7 +102,7 @@ async function parseAndLoadRedirect() {
         }
 
 
-        if (count % 4096 == 0) {
+        if (count % 32_768 == 0) {
             await previousBatchPromise;
 
             const batch = nextBatch;
@@ -111,7 +111,7 @@ async function parseAndLoadRedirect() {
             previousBatchPromise = insertRedirects(batch, redirect);
             // previousBatchPromise = Promise.resolve() as Promise<any>;
 
-            if (count % 16_384 == 0) {
+            if (count % 32_768*8 == 0) {
                 log(info.bytesRead, count);
             }
         }
@@ -124,7 +124,7 @@ async function parseAndLoadRedirect() {
         nextBatch.push({_from:r[0],_to:id});
             
         count++;
-        if (count % 4096 == 0) {
+        if (count % 32_768 == 0) {
             await previousBatchPromise;
 
             const batch = nextBatch;
@@ -133,7 +133,7 @@ async function parseAndLoadRedirect() {
             previousBatchPromise = insertRedirects(batch, redirect);
             // previousBatchPromise = Promise.resolve() as Promise<any>;
 
-            if (count % 16_384 == 0) {
+            if (count % 32_768*8 == 0) {
                 log(info.bytesRead, count);
             }
         }

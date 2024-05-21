@@ -1,15 +1,15 @@
-import { createWriteStream, existsSync, ReadStream } from "fs";
+import { createWriteStream, existsSync } from "fs";
 import { createGunzip, type Gunzip } from "node:zlib";
 import { createReadStream } from "node:fs";
 import { stat } from "node:fs/promises";
 import { env } from "../env.js";
-import { DecompressionStream } from "node:stream/web";
+import { mkdir } from "fs/promises";
 
 export type FileType = "page" | "redirect" | "pagelinks";
-await sqlDumpStreamFromWeb("redirect");
 export async function sqlDumpStreamFromCache(fileType:FileType) {
     const path = `./cache/${env.WIKI_LANG}/${env.WIKI_LANG}wiki-latest-${fileType}.sql.gz`;
     if (!existsSync(path)) {
+        await mkdir(`./cache/${env.WIKI_LANG}`, {recursive: true}).catch();
         const writeToFile = createWriteStream(path);
         const response = await fetch(`https://dumps.wikimedia.org/${env.WIKI_LANG}wiki/latest/${env.WIKI_LANG}wiki-latest-${fileType}.sql.gz`);
         const size = parseInt(response.headers.get("Content-Length") || "0");
