@@ -7,8 +7,8 @@
     "typescript": "^5.4.5"
   },
   "scripts": {
-    "ts-node": "node --env-file=.env --loader ts-node/esm",
-    "start": "node --loader ts-node/esm index.ts"
+    "ts-node": "node --max-old-space-size=8192 --env-file=.env --loader ts-node/esm",
+    "start": "node --max-old-space-size=8192 --loader ts-node/esm index.ts"
   },
   "type": "module",
   "volta": {
