@@ -5,7 +5,7 @@ import { stat } from "node:fs/promises";
 import { env } from "../env.js";
 import { mkdir } from "fs/promises";
 
-export type FileType = "page" | "redirect" | "pagelinks";
+export type FileType = "page" | "redirect" | "pagelinks" | "linktarget";
 export async function sqlDumpStreamFromCache(fileType:FileType) {
     const path = `./cache/${env.WIKI_LANG}/${env.WIKI_LANG}wiki-latest-${fileType}.sql.gz`;
     if (!existsSync(path)) {
