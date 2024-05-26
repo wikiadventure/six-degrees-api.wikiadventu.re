@@ -95,9 +95,12 @@ WORKDIR /project
 
 COPY . .
 
-# WORKDIR /project/sql-dump-to-arango
+WORKDIR /project/sql-dump-to-arango
 
-# EXPOSE 8529
+RUN npm i
+
+WORKDIR /project/
+
 
 CMD \
   cd /project/sql-dump-to-arango &&\
