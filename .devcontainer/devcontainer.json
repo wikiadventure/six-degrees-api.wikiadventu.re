@@ -1,0 +1,45 @@
+{
+    "name": "six-degree-api",
+    "shutdownAction": "stopContainer",
+    "privileged": true,
+    "workspaceFolder": "/project",
+    "build": {
+        "dockerfile": "./Dockerfile.dev",
+        "context": ".."
+    },
+    "customizations": {
+        "vscode": {
+            "extensions": [
+				"bmewburn.vscode-intelephense-client",
+				"eamodio.gitlens",
+				"EditorConfig.EditorConfig",
+				"mikestead.dotenv",
+				"onecentlin.laravel-blade",
+				"formulahendry.auto-close-tag",
+				"formulahendry.auto-complete-tag",
+				"codingyu.laravel-goto-view",
+				"amiralizadeh9480.laravel-extra-intellisense",
+				"ryannaddy.laravel-artisan",
+				"dbaeumer.vscode-eslint",
+				"github.vscode-github-actions",
+				"mhutchie.git-graph",
+				"ecmel.vscode-html-css",
+				"kisstkondoros.vscode-gutter-preview",
+				"qufiwefefwoyn.inline-sql-syntax",
+				"Zignd.html-css-class-completion",
+				"FallenMax.mithril-emmet",
+				"xdebug.php-debug",
+				"sysoev.language-stylus",
+				"SimonSiefke.svg-preview",
+				"wayou.vscode-todo-highlight",
+				"Gruntfuggly.todo-tree",
+				"hbenl.vscode-test-explorer",
+				"Vue.vscode-typescript-vue-plugin",
+				"Vue.volar",
+				"redhat.vscode-yaml",
+				"ysemeniuk.emmet-live"
+			]
+        }
+    }
+
+}
