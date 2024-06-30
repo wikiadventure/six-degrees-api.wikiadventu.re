@@ -8,7 +8,7 @@
   },
   "scripts": {
     "ts-node": "node --max-old-space-size=8192 --env-file=.env --loader ts-node/esm",
-    "start": "node --max-old-space-size=2048 --inspect-brk=0.0.0.0:9229 --loader ts-node/esm index.ts"
+    "start": "node --max-old-space-size=8192 --loader ts-node/esm index.ts"
   },
   "type": "module",
   "volta": {
