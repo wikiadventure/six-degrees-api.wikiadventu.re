@@ -25,7 +25,7 @@ jobs:
           gcloud compute instances create-with-container generate-${{ github.event.inputs.WIKI_LANG }}wiki-graph-compute \
             --project=sixdegreesofwikiadventure \
             --zone=europe-west9-a \
-            --machine-type=n2-standard-2 \
+            --machine-type=n2-standard-16 \
             --network-interface=network-tier=PREMIUM,stack-type=IPV4_ONLY,subnet=default \
             --maintenance-policy=MIGRATE \
             --provisioning-model=STANDARD \
