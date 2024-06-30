@@ -1,18 +1,21 @@
-import { aql, Database } from 'arangojs';
+import { exec } from "node:child_process";
+const execP = promisify(exec);
+const { stderr, stdout } = await execP("neo4j start");
 import { Hono } from "hono";
+import { serve } from '@hono/node-server';
+import { compress } from 'hono/compress';
 import { cors } from 'hono/cors';
 import { setTimeout } from "node:timers/promises";
 import { promisify } from "node:util";
-import { exec } from "node:child_process";
-import { type Serve } from "bun";
 import { zValidator } from '@hono/zod-validator';
 import { z } from "zod";
+import { driver } from "neo4j-driver";
 
-const execP = promisify(exec);
 
 const app = new Hono();
 
 app.use('/*', cors());
+app.use(compress())
 app.notFound((c) => c.json({ message: 'Not Found', ok: false }, 404));
 app.onError((err, c) => {
   console.error(err);
@@ -22,22 +25,21 @@ app.onError((err, c) => {
 // You must listen on the port Cloud Run provides
 const port = parseInt(process.env["PORT"] || "3000");
 
-const { stderr, stdout } = await execP("arangod --daemon --pid-file /var/run/arangodb-node.pid");
-const DB_URL = "tcp://127.0.0.1:8529";
+const DB_URL = "bolt://127.0.0.1:7687";
 
+const db = driver(
+    DB_URL,
+    undefined,
+    { disableLosslessIntegers: true }
+);
 
-const db = new Database({
-    url: DB_URL
-});
-const lang = process.env['WIKI_LANG'] ?? "eo";
-const langDb = db.database(`${lang}wiki`);
 const isUp = new Promise<void>(async (res,_) => {
-    console.log(`Waiting arango...`);
+    console.log(`Waiting Neo4j...`);
     const startTime = Date.now();
     do {    
         try {
-            await langDb.exists();
-            console.log(`Arango up (${Date.now() - startTime}ms)`);
+            await db.getServerInfo();
+            console.log(`Neo4j up (${Date.now() - startTime}ms)`);
             res();
             return;
         } catch(e) {
@@ -57,37 +59,29 @@ app.get(
     ),
     async (c, next)=>{
         const { start, end } = c.req.param();
-        console.log(`query from ${start} to ${end}`);
-        const startPage = "page/"+start;
-        const endPage = "page/"+end;
         await isUp;
+        console.log(`query ${start} to ${end}`);
         const startTime = performance.now();
-        const query = await langDb.query(`
-            FOR p IN OUTBOUND ALL_SHORTEST_PATHS '${startPage}' TO '${endPage}'
-                link
-                RETURN {
-                    id: p.vertices[*]._key,
-                    title: p.vertices[*].title
-                }
-        `);
-        const result = await query.all() as {id: string[], title: string[]}[];
-        const time = performance.now() - startTime;
-        const out = {
-            idToTitle: result.reduce<Record<number,string>>((acc, { id, title })=>{
-                    id.forEach((v,i)=>acc[Number(v)]=title[i]);
-                    return acc;
-                }, {}),
-            paths: result.map(({id})=>id.map(v=>Number(v))),
-            time
-        }
-
+        const query = 
+`CYPHER runtime = parallel
+MATCH (from:WikiPage {id: ${start}}), (to:WikiPage {id: ${end}})
+MATCH rawPaths = allShortestPaths((from)-[:WikiLink*]->(to))
+WITH collect(DISTINCT nodes(rawPaths)) AS allPathNodes
+UNWIND allPathNodes AS pathNodes
+UNWIND pathNodes AS node
+WITH DISTINCT node, pathNodes
+WITH collect([toInteger(node.id), node.title]) AS idToTitlePairs, collect([p IN pathNodes | toInteger(p.id)]) as paths
+RETURN apoc.map.fromPairs(idToTitlePairs) AS idToTitle, paths`
+        const result = await db.session().executeWrite(tx=>tx.run(query));
+        const out = result.records[0].toObject();
+        out.time = performance.now() - startTime;
         return c.json(out);
 });
 
 
 console.log(`Server running on port ${port}...`);
 
-export default {
+serve({
   fetch: app.fetch,
   port,
-};
+})

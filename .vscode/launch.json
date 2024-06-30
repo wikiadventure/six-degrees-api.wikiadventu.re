@@ -18,6 +18,26 @@
             "name": "Debug arango file",
             "request": "launch",
             "type": "node-terminal"
-        }
+        },
+        {
+            "cwd": "${workspaceFolder}/sql-dump-to-neo4j",
+            "command": "npm run ts-node -- ${file}",
+            "name": "Debug neo4j file",
+            "request": "launch",
+            "type": "node-terminal"
+        },
+        {
+            "name": "Docker Node.js Launch",
+            "type": "docker",
+            "request": "launch",
+            "preLaunchTask": "docker-run: debug",
+            "platform": "node",
+            "node": {
+                "remoteRoot": "/project"
+            },
+            "dockerServerReadyAction": {
+                "pattern": "Debugger listening"
+              }
+          }
     ]
 }

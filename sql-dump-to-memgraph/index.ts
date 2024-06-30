@@ -1,10 +1,10 @@
-import { parseDumpContent, sqlDumpStream, sqlDumpStreamFromWeb } from "./parser/dumpParser.js";
+import { parseDumpContent, sqlDumpStream } from "./parser/dumpParser.js";
 import { initMemgraphIndex, insertLinks, insertPages, insertRedirects } from "./memgraph/connection.js";
 import { createDumpProgressLogger } from "./logger/dumpProgress.js";
 
 export type WikiPage = {
     title: string,
-    _key: string // _key is now the page id
+    id: string // _key is now the page id
     isRedirect: boolean
 }
 
@@ -13,16 +13,16 @@ export type Edge = {
     _to:string
 }
 
+await initMemgraphIndex();
+// map a title to an id
 const pageMap = new Map<string, [string,boolean]>();
 
 async function parseAndLoadPage() {
 
-    await initMemgraphIndex();
-
     const { info, stream } = await sqlDumpStream("page");
     let previousBatchPromise = Promise.resolve() as Promise<any>;
     let count = 0;
-    let nextBatch:{id:string,title:string}[] = [];
+    let nextBatch:WikiPage[] = [];
     const { log } = createDumpProgressLogger(info.size, "Page");
     
     for await (const values of parseDumpContent(stream, ["page_id","page_title", "page_namespace","page_is_redirect"] as const)) {
@@ -30,7 +30,7 @@ async function parseAndLoadPage() {
         if (values[2] != "0") continue;
         // pageMap.set(values[1],values[0]);
         pageMap.set(values[1],[values[0],isRedirect]);
-        nextBatch.push({id: values[0], title:values[1]});
+        nextBatch.push({id: values[0], title:values[1], isRedirect});
         count++;
 
         if (count % 32_768 == 0) {
@@ -64,10 +64,11 @@ const redirectMap = new Map<string,string>();
 const toResolve:[string, string][] = [];
 
 async function parseAndLoadRedirect() {
+
     const { info, stream } = await sqlDumpStream("redirect");
     let previousBatchPromise = Promise.resolve() as Promise<any>;
     let count = 0;
-    let nextBatch:{a:string,b:string}[] = [];
+    let nextBatch:{_from:string,_to:string}[] = [];
     const { log } = createDumpProgressLogger(info.size, "Redirect ");
     for await (const values of parseDumpContent(stream, ["rd_from","rd_namespace","rd_title","rd_interwiki","rd_fragment"] as const)) {
         if (values[1] != "0") continue;
@@ -82,7 +83,7 @@ async function parseAndLoadRedirect() {
             continue;
          // The redirect lead to a valid page
         } else {
-            nextBatch.push({a:values[0],b:_toIsRedirect[0]});
+            nextBatch.push({_from:values[0],_to:_toIsRedirect[0]});
             count++;
         }
 
@@ -106,10 +107,10 @@ async function parseAndLoadRedirect() {
     for (const r of toResolve) {
         const id = resolveRedirect(r[1]);
         if (id==null) return 
-        nextBatch.push({a:r[0],b:id});
+        nextBatch.push({_from:r[0],_to:id});
             
         count++;
-        if (count % 4096 == 0) {
+        if (count % 32_768 == 0) {
             await previousBatchPromise;
 
             const batch = nextBatch;
@@ -141,7 +142,7 @@ async function parseAndLoadPageLinks() {
     const { info, stream } = await sqlDumpStream("pagelinks");
     let previousBatchPromise = Promise.resolve() as Promise<any>;
     let count = 0;
-    let nextBatch:{a:string,b:string}[] = [];
+    let nextBatch:{_from:string,_to:string}[] = [];
     const { log } = createDumpProgressLogger(info.size, "PageLinks ");
     for await (const values of parseDumpContent(stream, ["pl_from","pl_namespace","pl_title","pl_from_namespace"] as const)) {
         if (values[1] != "0" || values[3] != "0") continue;
@@ -155,16 +156,16 @@ async function parseAndLoadPageLinks() {
             if (resolvedId == null) {
                 continue;
             }
-            nextBatch.push({a: values[0], b: resolvedId});
+            nextBatch.push({_from: values[0], _to: resolvedId});
             count++;
         // The link resolve to a valid page
         } else {
-            nextBatch.push({a: values[0], b: _toIsRedirect[0]});
+            nextBatch.push({_from: values[0], _to: _toIsRedirect[0]});
             count++;
         }
 
 
-        if (count % 32_768 == 0) {
+        if (count % 4096 == 0) {
             await previousBatchPromise;
 
             const batch = nextBatch;
@@ -172,7 +173,7 @@ async function parseAndLoadPageLinks() {
 
             previousBatchPromise = insertLinks(batch);
             // previousBatchPromise = Promise.resolve() as Promise<any>;
-            if (count % 32_768*8 == 0) {
+            if (count % 16_384 == 0) {
                 log(info.bytesRead, count);
             }
         }
@@ -208,8 +209,8 @@ function resolveRedirect(pageTitle):null|string {
 }
 
 await parseAndLoadPage();
-// await parseAndLoadRedirect();
-// await parseAndLoadPageLinks();
+await parseAndLoadRedirect();
+await parseAndLoadPageLinks();
 console.log("finished");
 
 process.exit(0);

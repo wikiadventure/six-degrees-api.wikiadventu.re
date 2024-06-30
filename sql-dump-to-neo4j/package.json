@@ -1,5 +1,5 @@
 {
-  "name": "sql-dump-to-memgraph",
+  "name": "sql-dump-to-neo4j",
   "module": "index.ts",
   "devDependencies": {
     "@types/node": "^20.12.11",
@@ -15,7 +15,7 @@
     "node": "22.1.0"
   },
   "dependencies": {
-    "arangojs": "^8.8.1",
+    "4": "^5.21.0",
     "zod": "^3.23.8"
   }
 }

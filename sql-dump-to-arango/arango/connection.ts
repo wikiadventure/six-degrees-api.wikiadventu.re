@@ -16,23 +16,23 @@ export async function initLangDatabase() {
 }
 
 export async function insertPages(batch:WikiPage[], pageCollection:DocumentCollection<WikiPage>) {
-    return pageCollection.import(batch, {
-        onDuplicate: "ignore",
-    });
+    // return pageCollection.import(batch, {
+    //     onDuplicate: "ignore",
+    // });
 }
 
 export async function insertRedirects(batch:Edge[], redirectCollection:EdgeCollection<{}>) {
-    return redirectCollection.import(batch, {
-        fromPrefix: "page/",
-        toPrefix: "page/",
-        onDuplicate: "ignore",
-    });
+    // return redirectCollection.import(batch, {
+    //     fromPrefix: "page/",
+    //     toPrefix: "page/",
+    //     onDuplicate: "ignore",
+    // });
 }
 
 export async function insertLinks(batch:Edge[], linkCollection:EdgeCollection<{}>) {
-    return linkCollection.import(batch, {
-        fromPrefix: "page/",
-        toPrefix: "page/",
-        onDuplicate: "ignore",
-    });
+    // return linkCollection.import(batch, {
+    //     fromPrefix: "page/",
+    //     toPrefix: "page/",
+    //     onDuplicate: "ignore",
+    // });
 }

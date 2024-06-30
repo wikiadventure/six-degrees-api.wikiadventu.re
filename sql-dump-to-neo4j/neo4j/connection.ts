@@ -1,15 +1,30 @@
 import { driver } from "neo4j-driver";
+import { setTimeout } from "node:timers/promises";
 import type { Edge, WikiPage } from "../index.js";
 
 export const db = driver("bolt://localhost:7687");
 
-export async function initMemgraphIndex() {
+const isUp = new Promise<void>(async (res,_) => {
+    console.log(`Waiting Neo4j...`);
+    const startTime = Date.now();
+    do {    
+        try {
+            await db.getServerInfo();
+            console.log(`Neo4j up (${Date.now() - startTime}ms)`);
+            res();
+            return;
+        } catch(e) {
+        }
+        await setTimeout(50);
+    } while (true);
+});
+
+await isUp;
+
+export async function initNeo4jIndex() {
     return Promise.all([
-        db.session().run(`CREATE INDEX ON :WikiPage;`),
-        db.session().run(`CREATE INDEX ON :WikiPage(id);`),
-        db.session().run(`CREATE INDEX ON :WikiPage(title);`),
-        db.session().run(`CREATE EDGE INDEX ON :WikiRedirect;`),
-        db.session().run(`CREATE EDGE INDEX ON :WikiLink;`),
+        db.session().run(`CREATE INDEX index_wiki_page_id FOR (n:WikiPage) ON (n.id);`),
+        db.session().run(`CREATE INDEX index_wiki_page_title FOR (n:WikiPage) ON (n.title);`),
     ])
 }
 

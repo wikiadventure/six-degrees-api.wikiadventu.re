@@ -17,3 +17,6 @@ node_modules
 .env.docker
 serverless-docker/dump
 sql-dump-to-memgraph-rust
+dist
+*.gz
+*.sql

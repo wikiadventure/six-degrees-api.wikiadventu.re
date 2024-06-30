@@ -1,0 +1,134 @@
+FROM node:22.3.0-alpine3.20 AS node
+
+##################################### Neo4j Server #####################################
+
+FROM neo4j:community as neo4j
+
+###################################### Base image ######################################
+
+FROM docker:26.1.4-dind-alpine3.20 as base
+
+RUN apk update
+
+RUN apk add openjdk17 su-exec
+# PATH=/var/lib/neo4j/bin:/opt/java/openjdk/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin \
+ENV NEO4J_TARBALL=neo4j-community-5.20.0-unix.tar.gz \
+    NEO4J_EDITION=community \
+    NEO4J_URI=https://dist.neo4j.org/neo4j-community-5.20.0-unix.tar.gz \
+    NEO4J_HOME=/var/lib/neo4j
+
+RUN addgroup --gid 7474 --system neo4j && \
+    adduser --uid 7474 --system --no-create-home --home "${NEO4J_HOME}" --ingroup neo4j neo4j
+
+RUN apk add curl gcc git jq make procps tini wget findutils && \
+    curl --fail --silent --show-error --location --remote-name ${NEO4J_URI} && \
+    tar --extract --file ${NEO4J_TARBALL} --directory /var/lib && \
+    mv /var/lib/neo4j-* "${NEO4J_HOME}" && \
+    rm ${NEO4J_TARBALL} && \
+    mv "${NEO4J_HOME}"/data /data && \
+    mv "${NEO4J_HOME}"/logs /logs && \
+    chown -R neo4j:neo4j /data && \
+    chmod -R 777 /data && \
+    chown -R neo4j:neo4j /logs && \
+    chmod -R 777 /logs && \
+    chown -R neo4j:neo4j "${NEO4J_HOME}" && \
+    chmod -R 777 "${NEO4J_HOME}" && \
+    chmod -R 755 "${NEO4J_HOME}/bin" && \
+    ln -s /data "${NEO4J_HOME}"/data &&\
+    ln -s /logs "${NEO4J_HOME}"/logs
+
+ENV PATH="$PATH:/var/lib/neo4j/bin"
+
+WORKDIR /var/lib/neo4j/plugins
+
+RUN wget https://github.com/neo4j/apoc/releases/download/5.20.0/apoc-5.20.0-core.jar
+
+RUN mv apoc-5.20.0-core.jar apoc.jar
+
+WORKDIR /
+
+RUN echo -e "\n"server.default_listen_address=0.0.0.0 >> "${NEO4J_HOME}"/conf/neo4j.conf
+RUN echo -e "\n"dbms.security.auth_enabled=false >> "${NEO4J_HOME}"/conf/neo4j.conf
+
+EXPOSE 7687 7474
+VOLUME /data /logs
+
+##################################### Google Cloud #####################################
+
+ARG CLOUD_SDK_VERSION=481.0.0
+ENV CLOUD_SDK_VERSION=$CLOUD_SDK_VERSION
+ENV PATH /google-cloud-sdk/bin:$PATH
+RUN if [ `uname -m` = 'x86_64' ]; then echo -n "x86_64" > /tmp/arch; else echo -n "arm" > /tmp/arch; fi;
+RUN ARCH=`cat /tmp/arch` && apk --no-cache add \
+        curl \
+        python3 \
+        py3-crcmod \
+        py3-openssl \
+        bash \
+        libc6-compat \
+        openssh-client \
+        git \
+        gnupg \
+    && curl -O https://dl.google.com/dl/cloudsdk/channels/rapid/downloads/google-cloud-sdk-${CLOUD_SDK_VERSION}-linux-${ARCH}.tar.gz && \
+    tar xzf google-cloud-sdk-${CLOUD_SDK_VERSION}-linux-${ARCH}.tar.gz && \
+    rm google-cloud-sdk-${CLOUD_SDK_VERSION}-linux-${ARCH}.tar.gz && \
+    gcloud config set core/disable_usage_reporting true && \
+    gcloud config set component_manager/disable_update_check true && \
+    gcloud config set metrics/environment github_docker_image && \
+    gcloud --version
+RUN git config --system credential.'https://source.developers.google.com'.helper gcloud.sh
+
+######################################  Add node  ######################################
+
+COPY --from=node /usr/lib /usr/lib
+COPY --from=node /usr/local/lib /usr/local/lib
+COPY --from=node /usr/local/include /usr/local/include
+COPY --from=node /usr/local/bin /usr/local/bin
+
+#######################################  Script  #######################################
+
+WORKDIR /project
+
+COPY . .
+
+WORKDIR /project/sql-dump-to-neo4j
+
+RUN npm i
+
+WORKDIR /project/
+
+COPY --from=neo4j /startup/ /startup/
+
+CMD \
+  cd /project/sql-dump-to-neo4j &&\
+  # Copy the GCP credential to GCP.json file from the ENV
+  echo $GCP_JSON > GCP.json &&\
+  # Connect to Google Cloud
+  gcloud auth activate-service-account --key-file=GCP.json &&\
+  # Start Neo4j in background
+  neo4j start  &&\
+  # Build and run the dump parser with Node js
+  npm start &&\
+  # Login to docker hub
+  docker login -u $DOCKER_USERNAME -p $DOCKER_PASSWORD &&\
+  # cd to start building a image for cloud run
+  cd / &&\
+  # Build the image for the current lang
+  docker build -f /project/serverless-docker/dockerfile.neo4j / --build-arg wiki_lang=${WIKI_LANG} -t sacramentix1225/${WIKI_LANG}wiki-graph &&\
+  # Push it to docker hub
+  docker push sacramentix1225/${WIKI_LANG}wiki-graph &&\
+  # Configure to push to GCR hub too
+  gcloud auth configure-docker europe-west9-docker.pkg.dev --quiet &&\
+  # Configure to push to GCR hub too
+  docker tag sacramentix1225/${WIKI_LANG}wiki-graph europe-west9-docker.pkg.dev/sixdegreesofwikiadventure/wiki-graph/${WIKI_LANG}wiki-graph &&\
+  # Push to GCR.io
+  docker push europe-west9-docker.pkg.dev/sixdegreesofwikiadventure/wiki-graph/${WIKI_LANG}wiki-graph &&\
+  # Create a new Google Cloud Run
+  gcloud run deploy ${WIKI_LANG}wiki-graph-serverless --image=europe-west9-docker.pkg.dev/sixdegreesofwikiadventure/wiki-graph/${WIKI_LANG}wiki-graph:latest \
+  --cpu=8 --max-instances=5 --memory=32Gi --port=8080 --allow-unauthenticated \
+  --execution-environment=gen2 \
+  --region=europe-west9 --project=sixdegreesofwikiadventure &&\
+  # Delete the Instance running this script
+  export INSTANCE_NAME=$(curl -X GET http://metadata.google.internal/computeMetadata/v1/instance/name -H 'Metadata-Flavor: Google') &&\
+  export INSTANCE_ZONE=$(curl -X GET http://metadata.google.internal/computeMetadata/v1/instance/zone -H 'Metadata-Flavor: Google') &&\
+  gcloud --quiet compute instances delete $INSTANCE_NAME --zone=$INSTANCE_ZONE
