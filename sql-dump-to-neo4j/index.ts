@@ -296,7 +296,7 @@ function resolveRedirect(pageTitle):null|number {
 }
 await parseAndLoadPage();
 await parseAndLoadRedirect();
-if (["fr", "eo"].includes(env.WIKI_LANG)) {
+if (["fr", "eo", "en"].includes(env.WIKI_LANG)) {
     await parseAndLoadPageLinksWithLinkTarget();
 } else {
     await parseAndLoadPageLinks();
