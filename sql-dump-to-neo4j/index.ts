@@ -1,6 +1,8 @@
 import { parseDumpContent, sqlDumpStream, sqlDumpStreamFromWeb } from "./parser/dumpParser.js";
 import { initNeo4jIndex, insertLinks, insertPages, insertRedirects } from "./neo4j/connection.js";
 import { createDumpProgressLogger } from "./logger/dumpProgress.js";
+import LargeMapImport from "large-map";
+const LargeMap = LargeMapImport as unknown as typeof LargeMapImport.default;
 // import { CollectionType } from "arangojs/collection.js";
 import { env } from "./env.js";
 
@@ -15,9 +17,10 @@ export type Edge = {
     _to:number
 }
 
-const langDb = await initNeo4jIndex();
+await initNeo4jIndex();
+
 // map a title to an id
-const pageMap = new Map<string, [number,boolean]>();
+const pageMap = new LargeMap<string, [number,boolean]>();
 
 async function parseAndLoadPage() {
 
@@ -63,7 +66,7 @@ async function parseAndLoadPage() {
     await insertPages(batch);
 }
 
-const redirectMap = new Map<number,string>();
+const redirectMap = new LargeMap<number,string>();
 const toResolve:[number, string][] = [];
 
 async function parseAndLoadRedirect() {
@@ -143,7 +146,7 @@ async function parseAndLoadRedirect() {
 }
 
 
-const linkTargetMap = new Map<number, string>();
+const linkTargetMap = new LargeMap<number, string>();
 
 async function parseLinkTarget() {
     const { info, stream } = await sqlDumpStream("linktarget");
