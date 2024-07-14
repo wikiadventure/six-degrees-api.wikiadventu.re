@@ -48,13 +48,12 @@ WORKDIR /project
 
 COPY . .
 
-WORKDIR /project/sql-dump-to-neo4j
+WORKDIR /project/sql-dump-to-memgraph
 
 RUN npm i
 
 WORKDIR /project/
 
-COPY --from=neo4j /startup/ /startup/
 
 CMD \
   cd /project/sql-dump-to-neo4j &&\
