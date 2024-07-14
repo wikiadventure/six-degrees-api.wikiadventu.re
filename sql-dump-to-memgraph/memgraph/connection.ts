@@ -4,7 +4,9 @@ import type { Edge, WikiPage } from "../index.js";
 export const db = driver("bolt://localhost:7687");
 
 export async function initMemgraphIndex() {
+    await db.session().run(`STORAGE MODE IN_MEMORY_ANALYTICAL;`);
     return Promise.all([
+        db.session().run(`CREATE INDEX ON :WikiPage;`),
         db.session().run(`CREATE INDEX ON :WikiPage;`),
         db.session().run(`CREATE INDEX ON :WikiPage(id);`),
         db.session().run(`CREATE INDEX ON :WikiPage(title);`),

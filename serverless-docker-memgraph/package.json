@@ -1,0 +1,29 @@
+{
+  "name": "six-degrees-of-wikiadventure-serverless",
+  "version": "1.0.0",
+  "description": "A serverless with hono and neo4j",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "start": "node dist/index.js",
+    "build": "tsc"
+  },
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "@hono/node-server": "^1.11.4",
+    "@hono/zod-validator": "^0.2.1",
+    "hono": "^4.3.6",
+    "neo4j-driver": "^5.22.0",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@types/bun": "^1.1.2",
+    "@types/node": "20.12.11",
+    "ts-node": "^10.9.2",
+    "typescript": "5.4.5"
+  },
+  "volta": {
+    "node": "22.1.0"
+  }
+}

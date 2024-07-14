@@ -1,0 +1,10 @@
+FROM sacramentix1225/enwiki-graph
+
+COPY index.ts /project/index.ts
+
+RUN cd /project &&  npm run build
+
+RUN head -n -3 "${NEO4J_HOME}"/conf/neo4j.conf > temp && mv temp "${NEO4J_HOME}"/conf/neo4j.conf
+# RUN echo -e "\n"server.memory.heap.initial_size=16g"\n"server.memory.heap.max_size=16g"\n" >> "${NEO4J_HOME}"/conf/neo4j.conf
+
+CMD neo4j start & npm start || cat /var/lib/neo4j/logs/neo4j.log
