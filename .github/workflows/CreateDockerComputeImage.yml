@@ -20,11 +20,11 @@ jobs:
         uses: google-github-actions/setup-gcloud@v2.1.0
       - name: Create a Google Compute Engine instance to do the work
         run: |
-          docker build -t generate-wiki-graph -f dockerfile.neo4j . &&\
-          docker tag generate-wiki-graph europe-west9-docker.pkg.dev/sixdegreesofwikiadventure/wiki-graph/generate-wiki-graph &&\
-          docker tag generate-wiki-graph sacramentix1225/generate-wiki-graph &&\
+          docker build -t generate-wiki-memgraph -f dockerfile.memgraph . &&\
+          docker tag generate-wiki-memgraph europe-west9-docker.pkg.dev/sixdegreesofwikiadventure/wiki-graph/generate-wiki-memgraph &&\
+          docker tag generate-wiki-memgraph sacramentix1225/generate-wiki-memgraph &&\
           docker login -u ${{ secrets.DOCKER_USERNAME }} -p ${{ secrets.DOCKER_PASSWORD }} &&\
-          docker push sacramentix1225/generate-wiki-graph &&\
+          docker push sacramentix1225/generate-wiki-memgraph &&\
           gcloud auth configure-docker europe-west9-docker.pkg.dev --quiet &&\
-          docker push europe-west9-docker.pkg.dev/sixdegreesofwikiadventure/wiki-graph/generate-wiki-graph
+          docker push europe-west9-docker.pkg.dev/sixdegreesofwikiadventure/wiki-graph/generate-wiki-memgraph
           
