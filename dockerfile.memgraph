@@ -56,7 +56,7 @@ WORKDIR /project/
 
 
 CMD \
-  cd /project/sql-dump-to-neo4j &&\
+  cd /project/sql-dump-to-memgraph &&\
   # Copy the GCP credential to GCP.json file from the ENV
   echo $GCP_JSON > GCP.json &&\
   # Connect to Google Cloud
