@@ -100,35 +100,39 @@ WORKDIR /project/
 COPY --from=neo4j /startup/ /startup/
 
 CMD \
-  cd /project/sql-dump-to-neo4j &&\
-  # Copy the GCP credential to GCP.json file from the ENV
-  echo $GCP_JSON > GCP.json &&\
-  # Connect to Google Cloud
-  gcloud auth activate-service-account --key-file=GCP.json &&\
-  # Start Neo4j in background
-  neo4j start  &&\
-  # Build and run the dump parser with Node js
-  npm start &&\
-  # Login to docker hub
-  docker login -u $DOCKER_USERNAME -p $DOCKER_PASSWORD &&\
-  # cd to start building a image for cloud run
-  cd / &&\
-  # Build the image for the current lang
-  docker build -f /project/serverless-docker/dockerfile.neo4j / --build-arg wiki_lang=${WIKI_LANG} -t sacramentix1225/${WIKI_LANG}wiki-graph &&\
-  # Push it to docker hub
-  docker push sacramentix1225/${WIKI_LANG}wiki-graph &&\
-  # Configure to push to GCR hub too
-  gcloud auth configure-docker europe-west9-docker.pkg.dev --quiet &&\
-  # Configure to push to GCR hub too
-  docker tag sacramentix1225/${WIKI_LANG}wiki-graph europe-west9-docker.pkg.dev/sixdegreesofwikiadventure/wiki-graph/${WIKI_LANG}wiki-graph &&\
-  # Push to GCR.io
-  docker push europe-west9-docker.pkg.dev/sixdegreesofwikiadventure/wiki-graph/${WIKI_LANG}wiki-graph &&\
-  # Create a new Google Cloud Run
-  gcloud run deploy ${WIKI_LANG}wiki-graph-serverless --image=europe-west9-docker.pkg.dev/sixdegreesofwikiadventure/wiki-graph/${WIKI_LANG}wiki-graph:latest \
-  --cpu=8 --max-instances=5 --memory=32Gi --port=8080 --allow-unauthenticated \
-  --execution-environment=gen2 \
-  --region=europe-west9 --project=sixdegreesofwikiadventure &&\
-  # Delete the Instance running this script
-  export INSTANCE_NAME=$(curl -X GET http://metadata.google.internal/computeMetadata/v1/instance/name -H 'Metadata-Flavor: Google') &&\
-  export INSTANCE_ZONE=$(curl -X GET http://metadata.google.internal/computeMetadata/v1/instance/zone -H 'Metadata-Flavor: Google') &&\
-  gcloud --quiet compute instances delete $INSTANCE_NAME --zone=$INSTANCE_ZONE
+    cd /project/sql-dump-to-neo4j &&\
+    # Copy the GCP credential to GCP.json file from the ENV
+    echo $GCP_JSON > GCP.json &&\
+    # Connect to Google Cloud
+    gcloud auth activate-service-account --key-file=GCP.json &&\
+    # Start Neo4j in background
+    neo4j start  &&\
+    # Build and run the dump parser with Node js
+    npm start &&\
+    # Login to docker hub
+    docker login -u $DOCKER_USERNAME -p $DOCKER_PASSWORD &&\
+    # cd to start building a image for cloud run
+    cd / &&\
+    # Build the image for the current lang
+    docker build -f /project/serverless-docker/dockerfile.neo4j / --build-arg wiki_lang=${WIKI_LANG} -t sacramentix1225/${WIKI_LANG}wiki-graph &&\
+    # Push it to docker hub
+    docker push sacramentix1225/${WIKI_LANG}wiki-graph &&\
+    # Configure to push to GCR hub too
+    gcloud auth configure-docker europe-west9-docker.pkg.dev --quiet &&\
+    # Push the content of $NEO4J_HOME/data to Google Cloud Storage
+    # Create the Google Cloud Storage bucket if it doesn't exist
+    gsutil ls gs://${WIKI_LANG}wiki-graph-data || gsutil mb gs://${WIKI_LANG}wiki-graph-data &&\
+    gsutil -m cp -r "${NEO4J_HOME}"/data gs://${WIKI_LANG}wiki-graph-data \
+    # Configure to push to GCR hub too
+    docker tag sacramentix1225/${WIKI_LANG}wiki-graph europe-west9-docker.pkg.dev/sixdegreesofwikiadventure/wiki-graph/${WIKI_LANG}wiki-graph &&\
+    # Push to GCR.io
+    docker push europe-west9-docker.pkg.dev/sixdegreesofwikiadventure/wiki-graph/${WIKI_LANG}wiki-graph &&\
+    # Create a new Google Cloud Run
+    gcloud run deploy ${WIKI_LANG}wiki-graph-serverless --image=europe-west9-docker.pkg.dev/sixdegreesofwikiadventure/wiki-graph/${WIKI_LANG}wiki-graph:latest \
+    --cpu=8 --max-instances=5 --memory=32Gi --port=8080 --allow-unauthenticated \
+    --execution-environment=gen2 \
+    --region=europe-west9 --project=sixdegreesofwikiadventure &&\
+    # Delete the Instance running this script
+    export INSTANCE_NAME=$(curl -X GET http://metadata.google.internal/computeMetadata/v1/instance/name -H 'Metadata-Flavor: Google') &&\
+    export INSTANCE_ZONE=$(curl -X GET http://metadata.google.internal/computeMetadata/v1/instance/zone -H 'Metadata-Flavor: Google') &&\
+    gcloud --quiet compute instances delete $INSTANCE_NAME --zone=$INSTANCE_ZONE

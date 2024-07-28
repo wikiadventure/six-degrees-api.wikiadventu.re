@@ -49,7 +49,7 @@ WORKDIR /
 
 RUN echo -e "\n"dbms.security.auth_enabled=false >> "${NEO4J_HOME}"/conf/neo4j.conf
 
-COPY /data /data
+# COPY /data /data
 
 COPY /project/serverless-docker /project
 
