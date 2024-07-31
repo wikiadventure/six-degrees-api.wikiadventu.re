@@ -21,7 +21,7 @@ jobs:
       - name: Create a Google Compute Engine instance to do the work
         run: |
           docker build -t generate-wiki-neo4j -f dockerfile.neo4j . &&\
-          docker tag generate-wiki-memgraph europe-west9-docker.pkg.dev/sixdegreesofwikiadventure/wiki-graph/generate-wiki-neo4j &&\
+          docker tag generate-wiki-neo4j europe-west9-docker.pkg.dev/sixdegreesofwikiadventure/wiki-graph/generate-wiki-neo4j &&\
           docker tag generate-wiki-neo4j sacramentix1225/generate-wiki-neo4j &&\
           docker login -u ${{ secrets.DOCKER_USERNAME }} -p ${{ secrets.DOCKER_PASSWORD }} &&\
           docker push sacramentix1225/generate-wiki-neo4j &&\
