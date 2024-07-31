@@ -1,4 +1,4 @@
-name: Launch GCP compute engine to deploy Cloud run api
+4jname: Launch GCP compute engine to deploy Cloud run api
 
 on:
   workflow_dispatch:
@@ -35,7 +35,7 @@ jobs:
             --boot-disk-size=250GB \
             --boot-disk-type=pd-ssd \
             --boot-disk-device-name=generate-wiki-graph \
-            --container-image=europe-west9-docker.pkg.dev/sixdegreesofwikiadventure/wiki-graph/generate-wiki-memgraph:latest \
+            --container-image=europe-west9-docker.pkg.dev/sixdegreesofwikiadventure/wiki-graph/generate-wiki-neo4j:latest \
             --container-restart-policy=never \
             --container-privileged \
             --container-mount-host-path=host-path=/var/run/docker.sock,mode=rw,mount-path=/var/run/docker.sock \
