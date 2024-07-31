@@ -1,4 +1,4 @@
-4jname: Launch GCP compute engine to deploy Cloud run api
+name: Launch GCP compute engine to deploy Cloud run api
 
 on:
   workflow_dispatch:
