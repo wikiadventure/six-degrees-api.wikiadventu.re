@@ -35,8 +35,8 @@ jobs:
             --boot-disk-size=250GB \
             --boot-disk-type=pd-ssd \
             --boot-disk-device-name=generate-wiki-graph \
-            --container-image=europe-west9-docker.pkg.dev/sixdegreesofwikiadventure/wiki-graph/ggenerate-wiki-graph-volume-neo4j:latest \
-            --container-restart-policy=never \
+            --container-image=europe-west9-docker.pkg.dev/sixdegreesofwikiadventure/wiki-graph/generate-wiki-graph-volume-neo4j:latest \
+            --container-restart-policy=always \
             --container-privileged \
             --container-mount-host-path=host-path=/var/run/docker.sock,mode=rw,mount-path=/var/run/docker.sock \
             --container-env=^,@^GCP_JSON=${{ secrets.GCP_JSON }},@WIKI_LANG=${{ github.event.inputs.WIKI_LANG }},@DOCKER_USERNAME=${{ secrets.DOCKER_USERNAME }},@DOCKER_PASSWORD=${{ secrets.DOCKER_PASSWORD }} \
