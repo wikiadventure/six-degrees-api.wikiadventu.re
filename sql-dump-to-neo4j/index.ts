@@ -54,7 +54,7 @@ async function parseAndLoadPage() {
             previousBatchPromise = insertPages(batch);
             // previousBatchPromise = Promise.resolve() as Promise<any>;
 
-            if (count % 32_768*8 == 0) {
+            if (count % (32_768*64) == 0) {
                 log(info.bytesRead, count);
             }
         }
@@ -106,7 +106,7 @@ async function parseAndLoadRedirect() {
             previousBatchPromise = insertRedirects(batch);
             // previousBatchPromise = Promise.resolve() as Promise<any>;
 
-            if (count % 32_768*8 == 0) {
+            if (count % (32_768*64) == 0) {
                 log(info.bytesRead, count);
             }
         }
@@ -128,7 +128,7 @@ async function parseAndLoadRedirect() {
             previousBatchPromise = insertRedirects(batch);
             // previousBatchPromise = Promise.resolve() as Promise<any>;
 
-            if (count % 32_768*8 == 0) {
+            if (count % (32_768*64) == 0) {
                 log(info.bytesRead, count);
             }
         }

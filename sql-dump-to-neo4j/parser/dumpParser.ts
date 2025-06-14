@@ -10,38 +10,42 @@ export async function sqlDumpStreamFromCache(fileType:FileType) {
     const path = `./cache/${env.WIKI_LANG}/${env.WIKI_LANG}wiki-latest-${fileType}.sql.gz`;
     if (!existsSync(path)) {
         await mkdir(`./cache/${env.WIKI_LANG}`, {recursive: true}).catch();
+        const url = `https://dumps.wikimedia.org/${env.WIKI_LANG}wiki/latest/${env.WIKI_LANG}wiki-latest-${fileType}.sql.gz`;
         const writeToFile = createWriteStream(path);
-        const response = await fetch(`https://dumps.wikimedia.org/${env.WIKI_LANG}wiki/latest/${env.WIKI_LANG}wiki-latest-${fileType}.sql.gz`);
+        const response = await fetch(url);
         const size = parseInt(response.headers.get("Content-Length") || "0");
         let bytesDownloaded = 0;
         let lastLoggedProgress = 0;
         const startTime = Date.now();
 
+        function log() {
+            const elapsedTime = Date.now() - startTime;
+            const averageSpeed = bytesDownloaded / elapsedTime;
+            const remainingBytes = size - bytesDownloaded;
+            const estimatedRemainingTime = remainingBytes / averageSpeed;
+            const progressPercentage = (bytesDownloaded / size) * 100;
+            const estInSec = estimatedRemainingTime / 1000;
+            const h = Math.floor(estInSec / 3600);
+            const m = Math.floor((estInSec - (h * 3600)) / 60);
+            const s = Math.floor(estInSec - (h * 3600) - (m * 60));
+            const t = (n:number) => n.toString().padStart(2,"0");
+            const estimation = `${t(h)}h${t(m)}m${t(s)}s`;
+            const mbDownloaded = (bytesDownloaded / 1024 /1024).toFixed(2);
+            const mbSize = (size / 1024 /1024).toFixed(2);
+            console.log(`Downloaded: ${mbDownloaded}mb/${mbSize}mb (${progressPercentage.toFixed(2)}%)`);
+            console.log(`Estimated remaining time: ${estimation}`);
+            lastLoggedProgress = bytesDownloaded;
+        }
+
+        const logInterval = setInterval(log,20_000);
+
         for await (const chunk of response.body) {
             bytesDownloaded += chunk.byteLength;
             writeToFile.write(chunk);
-
-            // Log progress every 1MB
-            if (bytesDownloaded - lastLoggedProgress >= 1024 * 1024) {
-                const elapsedTime = Date.now() - startTime;
-                const averageSpeed = bytesDownloaded / elapsedTime;
-                const remainingBytes = size - bytesDownloaded;
-                const estimatedRemainingTime = remainingBytes / averageSpeed;
-                const progressPercentage = (bytesDownloaded / size) * 100;
-                const estInSec = estimatedRemainingTime / 1000;
-                const h = Math.floor(estInSec / 3600);
-                const m = Math.floor((estInSec - (h * 3600)) / 60);
-                const s = Math.floor(estInSec - (h * 3600) - (m * 60));
-                const t = (n:number) => n.toString().padStart(2,"0");
-                const estimation = `${t(h)}h${t(m)}m${t(s)}s`;
-                const mbDownloaded = (bytesDownloaded / 1024 /1024).toFixed(2);
-                const mbSize = (size / 1024 /1024).toFixed(2);
-                console.log(`Downloaded: ${mbDownloaded}mb/${mbSize}mb (${progressPercentage.toFixed(2)}%)`);
-                console.log(`Estimated remaining time: ${estimation}`);
-
-                lastLoggedProgress = bytesDownloaded;
-            }
         }
+        clearInterval(logInterval);
+        log();
+        console.log(`Download of ressource ${url} \nNow in cache at ${path}`);
 
         writeToFile.end();
     }
@@ -55,7 +59,7 @@ export async function sqlDumpStreamFromCache(fileType:FileType) {
     }
     const stream = createReadStream(`./cache/${env.WIKI_LANG}/${env.WIKI_LANG}wiki-latest-${fileType}.sql.gz`)
                     .on("data", (chunk:Buffer)=> info.bytesRead+=chunk.byteLength)
-                    .pipe(gunzip)
+                    .pipe(gunzip);
     stream.setEncoding("utf-8");
     return {
         info,

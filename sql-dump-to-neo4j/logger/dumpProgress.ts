@@ -41,9 +41,9 @@ export function createDumpProgressLogger(bytesSizeOfDump: number, logTitle:strin
         
 ${title} -> ${parsedAmount} parsed
 Ram : ${( ram ).toFixed(2)} mo
-${ totalSpendTime.toFixed(2) }s
-${ parsedPerSec.toFixed(2) }parsed/s
-${ moPerSec.toFixed(2) }mo/s
+${ totalSpendTime.toFixed(2) } s
+${ parsedPerSec.toFixed(2) } parsed / s
+${ moPerSec.toFixed(2) } mo/s
 ${ moRead.toFixed(2) + " / " + (dumpBytesSize/1024/1024).toFixed(2) } mo
 ${ estimation } estimation of time left
     
