@@ -32,10 +32,6 @@ RUN mv apoc-${NEO4J_VERSION_DOWNLOAD}-core.jar apoc.jar
 
 WORKDIR /
 
-RUN echo -e "\n"server.default_listen_address=0.0.0.0 >> "${NEO4J_HOME}"/conf/neo4j.conf
-RUN echo -e "\n"dbms.security.auth_enabled=false >> "${NEO4J_HOME}"/conf/neo4j.conf
-
-EXPOSE 7687 7474
 VOLUME /data /logs
 
 ##################################### Google Cloud #####################################
