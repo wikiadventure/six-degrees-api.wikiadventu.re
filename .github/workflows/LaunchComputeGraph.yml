@@ -6,39 +6,36 @@ on:
       WIKI_LANG:
         description: 'The 2 letter lang code to generate dump for'
         required: true
-      GCP_REGION:
-        description: 'The GCP region of compute engine to use'
-        default: 'europe-west1-c'
 jobs:
   build:
     runs-on: ubuntu-latest
     
     steps:
       - name: Checkout
-        uses: actions/checkout@v4.1.5
+        uses: actions/checkout@v4.2.2
       - id: 'auth'
         name: 'Authenticate to Google Cloud'
-        uses: 'google-github-actions/auth@v2'
+        uses: google-github-actions/auth@v2.1.4
         with:
             credentials_json: '${{ secrets.GCP_JSON_NON_ESCAPED }}'
       - name: Set up gcloud Cloud SDK environment
-        uses: google-github-actions/setup-gcloud@v2.1.0
+        uses: google-github-actions/setup-gcloud@v2.1.3
       - name: Create a Google Compute Engine instance to do the work
         run: |
-          gcloud compute instances create-with-container generate-${{ github.event.inputs.WIKI_LANG }}wiki-memgraph-compute \
+          gcloud compute instances create instance-20250614-153059 \
             --project=sixdegreesofwikiadventure \
-            --zone=${{ github.event.inputs.GCP_REGION }}\
+            --zone=in:europe-low-carbon-locations \
             --machine-type=n1-standard-16 \
             --network-interface=network-tier=PREMIUM,stack-type=IPV4_ONLY,subnet=default \
             --maintenance-policy=MIGRATE \
             --provisioning-model=STANDARD \
             --service-account=six-degrees-of-wiki-adventure@sixdegreesofwikiadventure.iam.gserviceaccount.com \
             --scopes=https://www.googleapis.com/auth/cloud-platform \
-            --image=projects/cos-cloud/global/images/cos-101-17162-463-16 \
+            --image=projects/cos-cloud/global/images/cos-stable-121-18867-90-59 \
             --boot-disk-size=250GB \
             --boot-disk-type=pd-ssd \
             --boot-disk-device-name=generate-wiki-graph \
-            --container-image=europe-west9-docker.pkg.dev/sixdegreesofwikiadventure/wiki-graph/generate-wiki-neo4j:latest \
+            --container-image=europe-west9-docker.pkg.dev/sixdegreesofwikiadventure/wiki-graph/ggenerate-wiki-graph-volume-neo4j:latest \
             --container-restart-policy=never \
             --container-privileged \
             --container-mount-host-path=host-path=/var/run/docker.sock,mode=rw,mount-path=/var/run/docker.sock \
@@ -46,4 +43,5 @@ jobs:
             --no-shielded-secure-boot \
             --shielded-vtpm \
             --shielded-integrity-monitoring \
-            --labels=goog-ec-src=vm_add-gcloud,container-vm=cos-101-17162-463-16
+            --labels=goog-ec-src=vm_add-gcloud \
+            --reservation-affinity=any
