@@ -1,4 +1,4 @@
-FROM node:22.3.0-alpine3.20 AS node
+FROM node:22.7.0-alpine3.20 AS node
 
 ###################################### Base image ######################################
 
@@ -12,9 +12,9 @@ RUN apk update
 
 RUN apk add openjdk17 su-exec
 # PATH=/var/lib/neo4j/bin:/opt/java/openjdk/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin \
-ENV NEO4J_TARBALL=neo4j-community-5.20.0-unix.tar.gz \
+ENV NEO4J_TARBALL=neo4j-community-5.26.4-unix.tar.gz \
     NEO4J_EDITION=community \
-    NEO4J_URI=https://dist.neo4j.org/neo4j-community-5.20.0-unix.tar.gz \
+    NEO4J_URI=https://dist.neo4j.org/neo4j-community-5.26.4-unix.tar.gz \
     NEO4J_HOME=/var/lib/neo4j
 
 RUN addgroup --gid 7474 --system neo4j && \
@@ -41,17 +41,17 @@ ENV PATH="$PATH:/var/lib/neo4j/bin"
 
 WORKDIR /var/lib/neo4j/plugins
 
-RUN wget https://github.com/neo4j/apoc/releases/download/5.20.0/apoc-5.20.0-core.jar
+RUN wget https://github.com/neo4j/apoc/releases/download/5.26.8/apoc-5.26.8-core.jar
 
-RUN mv apoc-5.20.0-core.jar apoc.jar
+RUN mv apoc-5.26.8-core.jar apoc.jar
 
 WORKDIR /
 
 RUN echo -e "\n"dbms.security.auth_enabled=false >> "${NEO4J_HOME}"/conf/neo4j.conf
 
-# COPY /data /data
+VOLUME /data /logs
 
-COPY /project/serverless-docker /project
+COPY . /project
 
 WORKDIR /project
 
@@ -59,4 +59,4 @@ RUN npm i
 
 RUN npm run build
 
-CMD npm start
+CMD chmod -R 777 /data && chmod -R 777 "${NEO4J_HOME}"/data && npm start

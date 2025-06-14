@@ -72,7 +72,7 @@ UNWIND pathNodes AS node
 WITH DISTINCT node, pathNodes
 WITH collect([toInteger(node.id), node.title]) AS idToTitlePairs, collect([p IN pathNodes | toInteger(p.id)]) as paths
 RETURN apoc.map.fromPairs(idToTitlePairs) AS idToTitle, paths`
-        const result = await db.session().executeWrite(tx=>tx.run(query));
+        const result = await db.session({ database: 'neo4j' }).executeRead(tx=>tx.run(query));
         const out = result.records[0].toObject();
         out.time = performance.now() - startTime;
         return c.json(out);
