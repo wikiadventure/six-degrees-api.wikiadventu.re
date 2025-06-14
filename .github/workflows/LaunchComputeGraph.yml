@@ -29,6 +29,8 @@ jobs:
             --network-interface=network-tier=PREMIUM,stack-type=IPV4_ONLY,subnet=default \
             --maintenance-policy=MIGRATE \
             --provisioning-model=STANDARD \
+            --service-account=six-degrees-of-wiki-adventure@sixdegreesofwikiadventure.iam.gserviceaccount.com \
+            --scopes=https://www.googleapis.com/auth/cloud-platform \
             --image=projects/cos-cloud/global/images/cos-stable-121-18867-90-59 \
             --boot-disk-size=250GB \
             --boot-disk-type=pd-ssd \
