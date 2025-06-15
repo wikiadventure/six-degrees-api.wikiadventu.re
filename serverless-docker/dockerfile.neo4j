@@ -33,6 +33,8 @@ RUN wget https://github.com/neo4j/apoc/releases/download/${NEO4J_VERSION_DOWNLOA
 
 RUN mv apoc-${NEO4J_VERSION_DOWNLOAD}-core.jar apoc.jar
 
+RUN echo -e "\n"dbms.security.auth_enabled=false >> "${NEO4J_HOME}"/conf/neo4j.conf
+
 WORKDIR /
 
 EXPOSE 7687 7474
