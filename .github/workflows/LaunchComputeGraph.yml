@@ -42,7 +42,7 @@ jobs:
             --container-restart-policy=never \
             --container-privileged \
             --container-mount-host-path=host-path=/var/run/docker.sock,mode=rw,mount-path=/var/run/docker.sock \
-            --container-env=^,@WIKI_LANG=${{ github.event.inputs.WIKI_LANG }} \
+            --container-env=WIKI_LANG=${{ github.event.inputs.WIKI_LANG }} \
             --no-shielded-secure-boot \
             --shielded-vtpm \
             --shielded-integrity-monitoring \
