@@ -1,6 +1,6 @@
 cd /project/sql-dump-to-neo4j &&
 # Start Neo4j in background
-/var/lib/neo4j/bin/neo4j start  &&
+neo4j start  &&
 # Build and run the dump parser with Node js
 npm start &&
 # Push the content of $NEO4J_HOME/data to Google Cloud Storage
