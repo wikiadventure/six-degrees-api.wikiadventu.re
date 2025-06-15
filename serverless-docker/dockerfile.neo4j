@@ -52,7 +52,4 @@ RUN npm i
 
 RUN npm run build
 
-CMD \
-    chown -R neo4j:neo4j /data && \
-    chmod -R 777 /data && \
-    npm start
+CMD npm start
