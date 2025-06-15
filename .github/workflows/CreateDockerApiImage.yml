@@ -22,10 +22,10 @@ jobs:
       - name: Create a Google Compute Engine instance to do the work
         run: |
           docker build -t serverless-wiki-graph-api-neo4j -f ./serverless-docker/dockerfile.neo4j ./serverless-docker &&\
-          docker tag serverless-wiki-graph-api-neo4j europe-west9-docker.pkg.dev/sixdegreesofwikiadventure/wiki-graph/serverless-wiki-graph-api-neo4j &&\
+          docker tag serverless-wiki-graph-api-neo4j europe-docker.pkg.dev/wikiadventure/wiki-graph/serverless-wiki-graph-api-neo4j &&\
           docker tag serverless-wiki-graph-api-neo4j sacramentix1225/serverless-wiki-graph-api-neo4j &&\
           echo "${{ secrets.DOCKER_TOKEN }}" | docker login -u "${{ secrets.DOCKER_USERNAME }}" --password-stdin  &&\
           docker push sacramentix1225/serverless-wiki-graph-api-neo4j &&\
-          gcloud auth configure-docker europe-west9-docker.pkg.dev --quiet &&\
-          docker push europe-west9-docker.pkg.dev/sixdegreesofwikiadventure/wiki-graph/serverless-wiki-graph-api-neo4j
+          gcloud auth configure-docker europe-docker.pkg.dev --quiet &&\
+          docker push europe-docker.pkg.dev/wikiadventure/wiki-graph/serverless-wiki-graph-api-neo4j
           
