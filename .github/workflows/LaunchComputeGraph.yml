@@ -27,7 +27,7 @@ jobs:
       - name: Create a Google Compute Engine instance to do the work
         run: |
           gcloud compute instances create-with-container generate-${{ github.event.inputs.WIKI_LANG }}-wiki-graph-volume-neo4j \
-            --project=sixdegreesofwikiadventure \
+            --project=wikiadventure \
             --zone=europe-west4-c \
             --machine-type=n1-standard-16 \
             --network-interface=network-tier=PREMIUM,stack-type=IPV4_ONLY,subnet=default \
