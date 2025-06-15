@@ -1,8 +1,6 @@
-FROM node:24.2-alpine AS node
+FROM node:24.2-alpine
 
-###################################### Base image ######################################
-
-FROM docker:28.2.2-dind-alpine3.22 AS base
+###################################### Add Neo4j ######################################
 
 RUN apk update
 
@@ -13,7 +11,7 @@ ENV NEO4J_VERSION_DOWNLOAD=5.26.8
 ENV NEO4J_TARBALL=neo4j-community-${NEO4J_VERSION_DOWNLOAD}-unix.tar.gz \
     NEO4J_EDITION=community \
     NEO4J_URI=https://dist.neo4j.org/neo4j-community-${NEO4J_VERSION_DOWNLOAD}-unix.tar.gz \
-    NEO4J_HOME=/var/lib/neo4j
+    NEO4J_HOME=/var/lib/neo4j-community-${NEO4J_VERSION_DOWNLOAD}
 
 RUN addgroup --gid 7474 --system neo4j && \
     adduser --uid 7474 --system --no-create-home --home "${NEO4J_HOME}" --ingroup neo4j neo4j
@@ -22,9 +20,9 @@ RUN apk add curl gcc git jq make procps tini wget findutils && \
     curl --fail --silent --show-error --location --remote-name ${NEO4J_URI} && \
     tar --extract --file ${NEO4J_TARBALL} --directory /var/lib
 
-ENV PATH="$PATH:/var/lib/neo4j/bin"
+ENV PATH="$PATH:${NEO4J_HOME}/bin"
 
-WORKDIR /var/lib/neo4j/plugins
+WORKDIR ${NEO4J_HOME}/plugins
 
 RUN wget https://github.com/neo4j/apoc/releases/download/${NEO4J_VERSION_DOWNLOAD}/apoc-${NEO4J_VERSION_DOWNLOAD}-core.jar
 
@@ -59,13 +57,6 @@ RUN ARCH=`cat /tmp/arch` && apk --no-cache add \
     gcloud --version
 RUN git config --system credential.'https://source.developers.google.com'.helper gcloud.sh
 
-######################################  Add node  ######################################
-
-COPY --from=node /usr/lib /usr/lib
-COPY --from=node /usr/local/lib /usr/local/lib
-COPY --from=node /usr/local/include /usr/local/include
-COPY --from=node /usr/local/bin /usr/local/bin
-
 #######################################  Script  #######################################
 
 WORKDIR /project
@@ -80,18 +71,4 @@ RUN npm i
 
 WORKDIR /project/
 
-
-CMD \
-    cd /project/sql-dump-to-neo4j &&\
-    # Start Neo4j in background
-    neo4j start  &&\
-    # Build and run the dump parser with Node js
-    npm start &&\
-    # Push the content of $NEO4J_HOME/data to Google Cloud Storage
-    # Create the Google Cloud Storage bucket if it doesn't exist
-    (gsutil ls gs://${WIKI_LANG}wiki-graph-data || gsutil mb -l eu gs://${WIKI_LANG}wiki-graph-data) &&\
-    gsutil requesterpays set on gs://${WIKI_LANG}wiki-graph-data &&\
-    gsutil iam ch allAuthenticatedUsers:objectViewer gs://${WIKI_LANG}wiki-graph-data &&\
-    # Clear the storage bucket before uploading new data
-    gsutil -m rm -r gs://${WIKI_LANG}wiki-graph-data/** || true &&\
-    gsutil -m cp -r "${NEO4J_HOME}"/data/* gs://${WIKI_LANG}wiki-graph-data
+CMD ["sh", "entrypoint.sh"]
