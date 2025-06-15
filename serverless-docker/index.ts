@@ -1,11 +1,9 @@
 import { exec } from "node:child_process";
 const execP = promisify(exec);
-const neo4jStartCommand = execP("neo4j start");
-neo4jStartCommand.finally(async ()=>{
-    const { stdout, stderr } = await execP("cat $NEO4J_HOME/logs/neo4j.log");
-    console.error(stderr);
-    console.log(stdout);
-});
+await execP("neo4j start");
+const { stdout, stderr } = await execP("cat $NEO4J_HOME/logs/neo4j.log");
+console.error(stderr);
+console.log(stdout);
 import { Hono } from "hono";
 import { serve } from '@hono/node-server';
 import { compress } from 'hono/compress';
