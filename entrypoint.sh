@@ -11,6 +11,6 @@ gsutil requesterpays set on gs://${WIKI_LANG}-wiki-graph-data &&
 gsutil iam ch allAuthenticatedUsers:objectViewer gs://${WIKI_LANG}-wiki-graph-data &&
 # # Clear the storage bucket before uploading new data
 gsutil -m rm -r gs://${WIKI_LANG}-wiki-graph-data/** || true &&
-gsutil -m cp -r "${NEO4J_HOME}/data/**" gs://${WIKI_LANG}-wiki-graph-data &&
+gsutil -m cp -r "${NEO4J_HOME}/data/*" gs://${WIKI_LANG}-wiki-graph-data &&
 echo finished &&
 sleep infinity
