@@ -27,7 +27,7 @@ RUN apk add curl gcc git jq make procps tini wget findutils && \
 
 ENV PATH="$PATH:${NEO4J_HOME}/bin"
 
-WORKDIR /var/lib/neo4j/plugins
+WORKDIR ${NEO4J_HOME}/plugins
 
 RUN wget https://github.com/neo4j/apoc/releases/download/${NEO4J_VERSION_DOWNLOAD}/apoc-${NEO4J_VERSION_DOWNLOAD}-core.jar
 
@@ -35,8 +35,8 @@ RUN mv apoc-${NEO4J_VERSION_DOWNLOAD}-core.jar apoc.jar
 
 RUN mkdir -p /data && chown neo4j:neo4j /data
 
-RUN echo -e "\n"dbms.security.auth_enabled=false >> ${NEO4J_HOME}/conf/neo4j.conf
-RUN echo -e "\n"server.directories.data=/data >> ${NEO4J_HOME}/conf/neo4j.conf
+RUN echo -e "\n"dbms.security.auth_enabled=false    >> ${NEO4J_HOME}/conf/neo4j.conf
+RUN echo -e "\n"server.directories.data=/data       >> ${NEO4J_HOME}/conf/neo4j.conf
 
 WORKDIR /
 
@@ -52,4 +52,7 @@ RUN npm i
 
 RUN npm run build
 
-CMD npm start
+CMD \
+    chown -R neo4j:neo4j /data && \
+    chmod -R 777 /data && \
+    npm start
