@@ -45,9 +45,3 @@ jobs:
             --shielded-integrity-monitoring \
             --labels=goog-ec-src=vm_add-gcloud \
             --reservation-affinity=any
-
-          gcloud compute instances name \
-            --service-account=myserviceaccountiam.gserviceaccount.com \
-            --scopes=https://www.googleapis.com/auth/cloud-platform \
-
-            attribute.actor=assertion.actor,attribute.repository=assertion.repository
