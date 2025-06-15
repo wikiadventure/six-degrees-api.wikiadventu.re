@@ -16,7 +16,7 @@ ENV NEO4J_VERSION_DOWNLOAD=5.26.8
 ENV NEO4J_TARBALL=neo4j-community-${NEO4J_VERSION_DOWNLOAD}-unix.tar.gz \
     NEO4J_EDITION=community \
     NEO4J_URI=https://dist.neo4j.org/neo4j-community-${NEO4J_VERSION_DOWNLOAD}-unix.tar.gz \
-    NEO4J_HOME=/var/lib/neo4j
+    NEO4J_HOME=/var/lib/neo4j-community-${NEO4J_VERSION_DOWNLOAD}
 
 RUN addgroup --gid 7474 --system neo4j && \
     adduser --uid 7474 --system --no-create-home --home "${NEO4J_HOME}" --ingroup neo4j neo4j
@@ -25,7 +25,7 @@ RUN apk add curl gcc git jq make procps tini wget findutils && \
     curl --fail --silent --show-error --location --remote-name ${NEO4J_URI} && \
     tar --extract --file ${NEO4J_TARBALL} --directory /var/lib
 
-ENV PATH="$PATH:/var/lib/neo4j/bin"
+ENV PATH="$PATH:${NEO4J_HOME}/bin"
 
 WORKDIR /var/lib/neo4j/plugins
 
@@ -33,13 +33,16 @@ RUN wget https://github.com/neo4j/apoc/releases/download/${NEO4J_VERSION_DOWNLOA
 
 RUN mv apoc-${NEO4J_VERSION_DOWNLOAD}-core.jar apoc.jar
 
+RUN mkdir -p /data && chown neo4j:neo4j /data
+
 RUN echo -e "\n"dbms.security.auth_enabled=false >> ${NEO4J_HOME}/conf/neo4j.conf
+RUN echo -e "\n"server.directories.data=/data >> ${NEO4J_HOME}/conf/neo4j.conf
 
 WORKDIR /
 
 EXPOSE 7687 7474
 
-VOLUME /data /logs
+VOLUME /data
 
 COPY . /project
 
