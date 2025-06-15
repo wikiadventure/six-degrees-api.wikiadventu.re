@@ -13,7 +13,8 @@ jobs:
         name: 'Authenticate to Google Cloud'
         uses: google-github-actions/auth@v2.1.4
         with:
-            credentials_json: '${{ secrets.GCP_JSON_NON_ESCAPED }}'
+          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT_EMAIL }} 
       - name: Docker Setup Buildx
         uses: docker/setup-buildx-action@v3.10.0
       - name: Set up gcloud Cloud SDK environment
@@ -23,7 +24,7 @@ jobs:
           docker build -t serverless-wiki-graph-api-neo4j -f ./serverless-docker/dockerfile.neo4j ./serverless-docker &&\
           docker tag serverless-wiki-graph-api-neo4j europe-west9-docker.pkg.dev/sixdegreesofwikiadventure/wiki-graph/serverless-wiki-graph-api-neo4j &&\
           docker tag serverless-wiki-graph-api-neo4j sacramentix1225/serverless-wiki-graph-api-neo4j &&\
-          docker login -u ${{ secrets.DOCKER_USERNAME }} -p ${{ secrets.DOCKER_PASSWORD }} &&\
+          echo "${{ secrets.DOCKER_TOKEN }}" | docker login -u "${{ secrets.DOCKER_USERNAME }}" --password-stdin  &&\
           docker push sacramentix1225/serverless-wiki-graph-api-neo4j &&\
           gcloud auth configure-docker europe-west9-docker.pkg.dev --quiet &&\
           docker push europe-west9-docker.pkg.dev/sixdegreesofwikiadventure/wiki-graph/serverless-wiki-graph-api-neo4j

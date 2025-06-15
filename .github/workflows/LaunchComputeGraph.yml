@@ -17,7 +17,8 @@ jobs:
         name: 'Authenticate to Google Cloud'
         uses: google-github-actions/auth@v2.1.4
         with:
-            credentials_json: '${{ secrets.GCP_JSON_NON_ESCAPED }}'
+          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT_EMAIL }} 
       - name: Set up gcloud Cloud SDK environment
         uses: google-github-actions/setup-gcloud@v2.1.3
       - name: Create a Google Compute Engine instance to do the work
@@ -29,8 +30,7 @@ jobs:
             --network-interface=network-tier=PREMIUM,stack-type=IPV4_ONLY,subnet=default \
             --maintenance-policy=MIGRATE \
             --provisioning-model=STANDARD \
-            --service-account=six-degrees-of-wiki-adventure@sixdegreesofwikiadventure.iam.gserviceaccount.com \
-            --scopes=https://www.googleapis.com/auth/cloud-platform \
+            --service-account=${{ secrets.GCP_SERVICE_ACCOUNT_EMAIL }} \
             --image=projects/cos-cloud/global/images/cos-stable-121-18867-90-59 \
             --boot-disk-size=250GB \
             --boot-disk-type=pd-ssd \
@@ -39,9 +39,15 @@ jobs:
             --container-restart-policy=never \
             --container-privileged \
             --container-mount-host-path=host-path=/var/run/docker.sock,mode=rw,mount-path=/var/run/docker.sock \
-            --container-env=^,@^GCP_JSON=${{ secrets.GCP_JSON }},@WIKI_LANG=${{ github.event.inputs.WIKI_LANG }},@DOCKER_USERNAME=${{ secrets.DOCKER_USERNAME }},@DOCKER_PASSWORD=${{ secrets.DOCKER_PASSWORD }} \
+            --container-env=^,@WIKI_LANG=${{ github.event.inputs.WIKI_LANG }} \
             --no-shielded-secure-boot \
             --shielded-vtpm \
             --shielded-integrity-monitoring \
             --labels=goog-ec-src=vm_add-gcloud \
             --reservation-affinity=any
+
+          gcloud compute instances name \
+            --service-account=myserviceaccountiam.gserviceaccount.com \
+            --scopes=https://www.googleapis.com/auth/cloud-platform \
+
+            attribute.actor=assertion.actor,attribute.repository=assertion.repository
