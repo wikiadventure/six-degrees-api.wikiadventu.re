@@ -26,26 +26,51 @@ jobs:
         uses: google-github-actions/setup-gcloud@v2.1.3
       - name: Create a Google Compute Engine instance to do the work
         run: |
-          gcloud compute instances create-with-container generate-${{ github.event.inputs.WIKI_LANG }}-wiki-graph-volume-neo4j \
-            --project=wikiadventure \
-            --zone=europe-west4-c \
-            --machine-type=n1-standard-16 \
-            --network-interface=network-tier=PREMIUM,stack-type=IPV4_ONLY,subnet=default \
-            --maintenance-policy=MIGRATE \
-            --provisioning-model=STANDARD \
-            --service-account=${{ secrets.GCP_SERVICE_ACCOUNT_EMAIL }} \
-            --scopes=https://www.googleapis.com/auth/cloud-platform \
-            --image=projects/cos-cloud/global/images/cos-stable-121-18867-90-59 \
-            --boot-disk-size=250GB \
-            --boot-disk-type=pd-ssd \
-            --boot-disk-device-name=generate-wiki-graph \
-            --container-image=europe-docker.pkg.dev/wikiadventure/wiki-graph/generate-wiki-graph-volume-neo4j:latest \
-            --container-restart-policy=never \
-            --container-privileged \
-            --container-mount-host-path=host-path=/var/run/docker.sock,mode=rw,mount-path=/var/run/docker.sock \
-            --container-env=WIKI_LANG=${{ github.event.inputs.WIKI_LANG }} \
-            --no-shielded-secure-boot \
-            --shielded-vtpm \
-            --shielded-integrity-monitoring \
-            --labels=goog-ec-src=vm_add-gcloud \
-            --reservation-affinity=any
+          ZONES_TO_TRY=(
+            "europe-north2-a" "europe-north2-b" "europe-north2-c" \
+            "europe-north1-a" "europe-north1-b" "europe-north1-c" \
+            "europe-west6-a" "europe-west6-b" "europe-west6-c" \
+            "europe-west1-b" "europe-west1-c" "europe-west1-d"
+          )
+          INSTANCE_CREATED=false
+          echo "Attempting to create GCE instance for WIKI_LANG: ${{ github.event.inputs.WIKI_LANG }}"
+          for ZONE in "${ZONES_TO_TRY[@]}"; do
+            echo "Attempting to create instance in zone: $ZONE"
+            gcloud compute instances create-with-container generate-${{ github.event.inputs.WIKI_LANG }}-wiki-graph-volume-neo4j \
+              --project=wikiadventure \
+              --zone="$ZONE" \
+              --machine-type=n1-standard-16 \
+              --network-interface=network-tier=PREMIUM,stack-type=IPV4_ONLY,subnet=default \
+              --maintenance-policy=MIGRATE \
+              --provisioning-model=STANDARD \
+              --service-account=${{ secrets.GCP_SERVICE_ACCOUNT_EMAIL }} \
+              --scopes=https://www.googleapis.com/auth/cloud-platform \
+              --image=projects/cos-cloud/global/images/cos-stable-121-18867-90-59 \
+              --boot-disk-size=250GB \
+              --boot-disk-type=pd-ssd \
+              --boot-disk-device-name=generate-wiki-graph \
+              --container-image=europe-docker.pkg.dev/wikiadventure/wiki-graph/generate-wiki-graph-volume-neo4j:latest \
+              --container-restart-policy=never \
+              --container-privileged \
+              --container-mount-host-path=host-path=/var/run/docker.sock,mode=rw,mount-path=/var/run/docker.sock \
+              --container-env=WIKI_LANG=${{ github.event.inputs.WIKI_LANG }} \
+              --no-shielded-secure-boot \
+              --shielded-vtpm \
+              --shielded-integrity-monitoring \
+              --labels=goog-ec-src=vm_add-gcloud \
+              --reservation-affinity=any
+            
+            EC=$?
+            if [ $EC -eq 0 ]; then
+              echo "Instance created successfully in zone: $ZONE"
+              INSTANCE_CREATED=true
+              break
+            else
+              echo "Failed to create instance in zone: $ZONE (exit code: $EC). Trying next zone."
+            fi
+          done
+
+          if [ "$INSTANCE_CREATED" = false ]; then
+            echo "Failed to create instance in any of the specified zones for WIKI_LANG: ${{ github.event.inputs.WIKI_LANG }}."
+            exit 1
+          fi
