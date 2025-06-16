@@ -1,9 +1,9 @@
 import { exec } from "node:child_process";
-const execP = promisify(exec);
-await execP("neo4j start");
-const { stdout, stderr } = await execP("cat $NEO4J_HOME/logs/neo4j.log");
-console.error(stderr);
-console.log(stdout);
+// const execP = promisify(exec);
+// await execP("neo4j start");
+const neo4jProcess = exec("neo4j console -Ddbms.logs.console.level=DEBUG");
+neo4jProcess.stdout?.pipe(process.stdout);
+neo4jProcess.stderr?.pipe(process.stderr);
 import { Hono } from "hono";
 import { serve } from '@hono/node-server';
 import { compress } from 'hono/compress';
