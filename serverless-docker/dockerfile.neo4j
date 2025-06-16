@@ -35,8 +35,6 @@ RUN mv apoc-${NEO4J_VERSION_DOWNLOAD}-core.jar apoc.jar
 
 RUN mkdir -p /data && chown neo4j:neo4j /data
 
-RUN mkdir -p /data/databases && chown neo4j:neo4j /data/databases
-
 RUN echo -e "\n"dbms.security.auth_enabled=false            >> ${NEO4J_HOME}/conf/neo4j.conf
 RUN echo -e "\n"server.directories.data=/data               >> ${NEO4J_HOME}/conf/neo4j.conf
 RUN echo -e "\n"server.databases.default_to_read_only=true  >> ${NEO4J_HOME}/conf/neo4j.conf
