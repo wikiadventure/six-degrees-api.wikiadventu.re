@@ -32,4 +32,4 @@ jobs:
         env:
           WIKI_LANG: ${{ github.event.inputs.WIKI_LANG }}
           GCP_SERVICE_ACCOUNT_EMAIL: ${{ secrets.GCP_SERVICE_ACCOUNT_EMAIL }}
-        run: npx ts-node --loader ts-node/esm .github/workflows/LaunchComputeToLowCarbonFootprintEurope.ts
+        run: npx ts-node .github/workflows/LaunchComputeToLowCarbonFootprintEurope.ts
