@@ -1,5 +1,8 @@
+import { promisify } from "node:util";
+import { exec } from "node:child_process";
+const execP = promisify(exec);
 import { parseDumpContent, sqlDumpStream, sqlDumpStreamFromWeb } from "./parser/dumpParser.js";
-import { initNeo4jIndex, insertLinks, insertPages, insertRedirects } from "./neo4j/connection.js";
+import { db, initNeo4jIndex, insertLinks, insertPages, insertRedirects } from "./neo4j/connection.js";
 import { createDumpProgressLogger } from "./logger/dumpProgress.js";
 import LargeMapImport from "large-map";
 const LargeMap = LargeMapImport as unknown as typeof LargeMapImport.default;
@@ -304,4 +307,6 @@ if (["fr", "eo", "en"].includes(env.WIKI_LANG)) {
 
 console.log("finished");
 
+await db.close();
+await execP("neo4j stop");
 process.exit(0);
