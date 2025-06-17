@@ -78,6 +78,4 @@ VOLUME /data
 
 RUN npm i
 
-WORKDIR /project/
-
-CMD ["sh", "entrypoint.sh"]
+CMD ["npm", "start-GCP"]

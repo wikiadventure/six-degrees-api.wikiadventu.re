@@ -308,5 +308,3 @@ if (["fr", "eo", "en"].includes(env.WIKI_LANG)) {
 console.log("finished");
 
 await db.close();
-await execP("neo4j stop");
-process.exit(0);

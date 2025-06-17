@@ -8,12 +8,10 @@
   },
   "scripts": {
     "ts-node": "node --max-old-space-size=8192 --env-file=.env --loader ts-node/esm",
-    "start": "node --max-old-space-size=10240 --loader ts-node/esm index.ts"
+    "start": "node --max-old-space-size=10240 --loader ts-node/esm index.ts",
+    "start-GCP": "node --max-old-space-size=10240 --loader ts-node/esm indexGCP.ts"
   },
   "type": "module",
-  "volta": {
-    "node": "22.1.0"
-  },
   "dependencies": {
     "large-map": "^1.0.0",
     "neo4j-driver": "^5.28.1",
