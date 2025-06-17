@@ -1,9 +1,10 @@
-import { createWriteStream, existsSync } from "fs";
+import { createWriteStream, existsSync } from "node:fs";
 import { createGunzip, type Gunzip } from "node:zlib";
 import { createReadStream } from "node:fs";
 import { stat } from "node:fs/promises";
 import { env } from "../env.js";
 import { mkdir } from "fs/promises";
+import { Readable } from "node:stream";
 
 export type FileType = "page" | "redirect" | "pagelinks" | "linktarget";
 export async function sqlDumpStreamFromCache(fileType:FileType) {
@@ -39,7 +40,7 @@ export async function sqlDumpStreamFromCache(fileType:FileType) {
 
         const logInterval = setInterval(log,20_000);
 
-        for await (const chunk of response.body) {
+        for await (const chunk of response.body as any) {
             bytesDownloaded += chunk.byteLength;
             writeToFile.write(chunk);
         }
@@ -57,10 +58,11 @@ export async function sqlDumpStreamFromCache(fileType:FileType) {
         size,
         bytesRead: 0
     }
-    const stream = createReadStream(`./cache/${env.WIKI_LANG}/${env.WIKI_LANG}wiki-latest-${fileType}.sql.gz`)
+    const stream = createReadStream(path)
                     .on("data", (chunk:Buffer)=> info.bytesRead+=chunk.byteLength)
                     .pipe(gunzip);
     stream.setEncoding("utf-8");
+
     return {
         info,
         stream
@@ -90,7 +92,7 @@ export async function sqlDumpStreamFromWeb(fileType:FileType) {
                 resolve();
             }
             
-            for await (const chunk of r.body) {
+            for await (const chunk of r.body as any) {
                 info.bytesRead+=chunk.byteLength;
                 const capNotReached = gunzip.write(chunk);
                 if (!capNotReached) {
@@ -120,7 +122,7 @@ export async function sqlDumpStream(fileType:FileType) {
 
 type ToTupleString<T extends any[]> = { [K in keyof T]: string };
 
-export async function* parseDumpContent<Ks extends string[]>(stream: Gunzip, keyToYield: Ks): AsyncGenerator<ToTupleString<Ks>, void, unknown> {
+export async function* parseDumpContent<Ks extends string[]>(stream: Readable, keyToYield: Ks): AsyncGenerator<ToTupleString<Ks>, void, unknown> {
     /*  
         A variable to store what remains of what we read to parse the 
         header of the sql dump to retreive fields with their order

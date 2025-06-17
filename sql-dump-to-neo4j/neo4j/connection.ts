@@ -33,17 +33,32 @@ const insertPageQuery =
 UNWIND nodes AS node
 CREATE(:WikiPage{id:node.id,title:node.title,isRedirect:node.isRedirect})`;
 
+const insertPageApocIterateQuery = 
+`CALL apoc.periodic.iterate(
+    "UNWIND $edges AS edge RETURN edge",
+    "MATCH (a:WikiPage {id: node._from}), (b:WikiPage {id: node._to}) CREATE (a)-[:WikiRedirect]->(b)",
+    {batchSize: 16384, parallel: true, params: {edges: $edges}}
+)`;
+
 export async function insertPages(batch:WikiPage[]) {
-    return db.session().executeWrite(tx=>tx.run(insertPageQuery, {batch}))
+    return db.session().executeWrite(tx=>tx.run(insertPageApocIterateQuery, {batch}))
 }
 
 const insertRedirectQuery = 
 `WITH $batch AS nodes
 UNWIND nodes AS node
-MATCH (a:WikiPage {id: node._from}), (b:WikiPage {id: node._to}) CREATE (a)-[:WikiRedirect]->(b)`;
+CREATE(:WikiPage{id:node.id,title:node.title,isRedirect:node.isRedirect})`;
+
+const insertRedirectApocIterateQuery = 
+`CALL apoc.periodic.iterate(
+    "UNWIND $edges AS edge RETURN edge",
+    "MATCH (a:WikiPage {id: node._from}), (b:WikiPage {id: node._to}) CREATE (a)-[:WikiRedirect]->(b)",
+    {batchSize: 16384, parallel: true, params: {edges: $edges}}
+)`;
+
 
 export async function insertRedirects(batch:Edge[]) {
-    return db.session().executeWrite(tx=>tx.run(insertRedirectQuery, {batch}))
+    return db.session().executeWrite(tx=>tx.run(insertRedirectApocIterateQuery, {batch}))
 }
 
 const insertLinkQuery = 
@@ -51,6 +66,13 @@ const insertLinkQuery =
 UNWIND nodes AS node
 MATCH (a:WikiPage {id: node._from}), (b:WikiPage {id: node._to}) CREATE (a)-[:WikiLink]->(b)`;
 
+const insertLinkApocIterateQuery = 
+`CALL apoc.periodic.iterate(
+    "UNWIND $edges AS edge RETURN edge",
+    "MATCH (a:WikiPage {id: edge._from}), (b:WikiPage {id: edge._to}) CREATE (a)-[:WikiLink]->(b)",
+    {batchSize: 16384, parallel: true, params: {edges: $edges}}
+)`;
+
 export async function insertLinks(batch:Edge[]) {
-    return db.session().executeWrite(tx=>tx.run(insertLinkQuery, {batch}))
+    return db.session().executeWrite(tx=>tx.run(insertLinkApocIterateQuery, {batch}))
 }

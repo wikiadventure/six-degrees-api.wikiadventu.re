@@ -1,1 +1,1 @@
-cd /project/sql-dump-to-neo4j && npm run start-GCP
+cd /project/sql-dump-to-neo4j && bun run indexGCP.ts
