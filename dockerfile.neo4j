@@ -30,12 +30,12 @@ RUN mv apoc-${NEO4J_VERSION_DOWNLOAD}-core.jar apoc.jar
 
 RUN echo -e "\\n"server.default_listen_address=0.0.0.0          >> "${NEO4J_HOME}"/conf/neo4j.conf
 RUN echo -e "\\n"dbms.security.auth_enabled=false               >> "${NEO4J_HOME}"/conf/neo4j.conf
-RUN echo -e "\\n"dbms.tx_log.rotation.retention_policy=false    >> "${NEO4J_HOME}"/conf/neo4j.conf
-RUN echo -e "\\n"dbms.checkpoint.interval.tx=1000000            >> "${NEO4J_HOME}"/conf/neo4j.conf
-RUN echo -e "\\n"dbms.checkpoint.interval.time=60m              >> "${NEO4J_HOME}"/conf/neo4j.conf
-RUN echo -e "\\n"dbms.memory.heap.initial_size=12g              >> "${NEO4J_HOME}"/conf/neo4j.conf
-RUN echo -e "\\n"dbms.memory.heap.max_size=12g                  >> "${NEO4J_HOME}"/conf/neo4j.conf
-RUN echo -e "\\n"dbms.memory.pagecache.size=32g                 >> "${NEO4J_HOME}"/conf/neo4j.conf
+RUN echo -e "\\n"db.tx_log.rotation.retention_policy=false      >> "${NEO4J_HOME}"/conf/neo4j.conf
+RUN echo -e "\\n"db.checkpoint.interval.tx=1000000              >> "${NEO4J_HOME}"/conf/neo4j.conf
+RUN echo -e "\\n"db.checkpoint.interval.time=60m                >> "${NEO4J_HOME}"/conf/neo4j.conf
+RUN echo -e "\\n"server.memory.heap.initial_size=12g              >> "${NEO4J_HOME}"/conf/neo4j.conf
+RUN echo -e "\\n"server.memory.heap.max_size=12g                  >> "${NEO4J_HOME}"/conf/neo4j.conf
+RUN echo -e "\\n"server.memory.pagecache.size=32g                 >> "${NEO4J_HOME}"/conf/neo4j.conf
 
 WORKDIR /
 
