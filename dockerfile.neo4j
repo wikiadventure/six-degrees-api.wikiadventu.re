@@ -78,4 +78,4 @@ VOLUME /data
 
 RUN npm i
 
-CMD ["npm", "start-GCP"]
+CMD ["sh", "entrypoint.sh"]
