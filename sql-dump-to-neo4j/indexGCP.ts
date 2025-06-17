@@ -6,7 +6,7 @@ const WIKI_LANG     = process.env.WIKI_LANG;
 const NEO4J_HOME    = process.env.NEO4J_HOME;
 
 async function run(command:string) {
-    execP(command)
+    return execP(command)
     .then(({ stdout, stderr }) => {
         console.log(stdout);
         console.error(stderr);
