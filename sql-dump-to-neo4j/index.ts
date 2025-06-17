@@ -22,6 +22,19 @@ export type Edge = {
 
 await initNeo4jIndex();
 
+const PAGE_BATCH_SIZE           = 65_536;
+const PAGE_LOG_SIZE             = PAGE_BATCH_SIZE;
+
+const REDIRECT_BATCH_SIZE       = 65_536;
+const REDIRECT_LOG_SIZE         = REDIRECT_BATCH_SIZE;
+
+// const LINKTARGET_BATCH_SIZE     = 65_536;
+const LINKTARGET_LOG_SIZE       = 65_536;
+
+const PAGELINK_BATCH_SIZE       = 65_536;
+const PAGELINK_LOG_SIZE         = PAGELINK_BATCH_SIZE;
+
+
 // map a title to an id
 const pageMap = new LargeMap<string, [number,boolean]>();
 
@@ -42,7 +55,7 @@ async function parseAndLoadPage() {
         nextBatch.push({id, title:page_title, isRedirect});
         count++;
 
-        if (count % 32_768 == 0) {
+        if (count % PAGE_BATCH_SIZE == 0) {
             
             await previousBatchPromise;
             /**
@@ -57,7 +70,7 @@ async function parseAndLoadPage() {
             previousBatchPromise = insertPages(batch);
             // previousBatchPromise = Promise.resolve() as Promise<any>;
 
-            if (count % (32_768*64) == 0) {
+            if (count % PAGE_LOG_SIZE == 0) {
                 log(info.bytesRead, count);
             }
         }
@@ -100,7 +113,7 @@ async function parseAndLoadRedirect() {
         }
 
 
-        if (count % 32_768 == 0) {
+        if (count % REDIRECT_BATCH_SIZE == 0) {
             await previousBatchPromise;
 
             const batch = nextBatch;
@@ -109,7 +122,7 @@ async function parseAndLoadRedirect() {
             previousBatchPromise = insertRedirects(batch);
             // previousBatchPromise = Promise.resolve() as Promise<any>;
 
-            if (count % (32_768*64) == 0) {
+            if (count % REDIRECT_LOG_SIZE == 0) {
                 log(info.bytesRead, count);
             }
         }
@@ -122,7 +135,7 @@ async function parseAndLoadRedirect() {
         nextBatch.push({_from, _to});
             
         count++;
-        if (count % 32_768 == 0) {
+        if (count % REDIRECT_BATCH_SIZE == 0) {
             await previousBatchPromise;
 
             const batch = nextBatch;
@@ -131,7 +144,7 @@ async function parseAndLoadRedirect() {
             previousBatchPromise = insertRedirects(batch);
             // previousBatchPromise = Promise.resolve() as Promise<any>;
 
-            if (count % (32_768*64) == 0) {
+            if (count % REDIRECT_LOG_SIZE == 0) {
                 log(info.bytesRead, count);
             }
         }
@@ -161,7 +174,7 @@ async function parseLinkTarget() {
         linkTargetMap.set(Number(lt_id), lt_title);
         count++;
 
-        if (count % 32_768*8 == 0) {
+        if (count % LINKTARGET_LOG_SIZE == 0) {
             log(info.bytesRead, count);
         }
 
@@ -199,7 +212,7 @@ async function parseAndLoadPageLinks() {
         }
 
 
-        if (count % 16_384 == 0) {
+        if (count % PAGELINK_BATCH_SIZE == 0) {
             await previousBatchPromise;
 
             const batch = nextBatch;
@@ -207,7 +220,7 @@ async function parseAndLoadPageLinks() {
 
             previousBatchPromise = insertLinks(batch);
             // previousBatchPromise = Promise.resolve() as Promise<any>;
-            if (count % 32_768 == 0) {
+            if (count % PAGELINK_LOG_SIZE == 0) {
                 log(info.bytesRead, count);
             }
         }
@@ -255,7 +268,7 @@ async function parseAndLoadPageLinksWithLinkTarget() {
         }
 
 
-        if (count % 16_384 == 0) {
+        if (count % PAGELINK_BATCH_SIZE == 0) {
             await previousBatchPromise;
 
             const batch = nextBatch;
@@ -263,7 +276,7 @@ async function parseAndLoadPageLinksWithLinkTarget() {
 
             previousBatchPromise = insertLinks(batch);
             // previousBatchPromise = Promise.resolve() as Promise<any>;
-            if (count % 16_384 == 0) {
+            if (count % PAGELINK_LOG_SIZE == 0) {
                 log(info.bytesRead, count);
             }
         }
