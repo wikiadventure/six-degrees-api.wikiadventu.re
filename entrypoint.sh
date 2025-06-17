@@ -1,1 +1,1 @@
-cd /project/sql-dump-to-neo4j && npm start-GCP
+cd /project/sql-dump-to-neo4j && npm run start-GCP
