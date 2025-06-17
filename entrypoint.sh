@@ -10,7 +10,7 @@ gsutil ls gs://${WIKI_LANG}-wiki-graph-data || gsutil mb -l eu gs://${WIKI_LANG}
 gsutil requesterpays set on gs://${WIKI_LANG}-wiki-graph-data &&
 gsutil iam ch allAuthenticatedUsers:objectViewer gs://${WIKI_LANG}-wiki-graph-data &&
 # # Clear the storage bucket before uploading new data
-gsutil -m rm -r gs://${WIKI_LANG}-wiki-graph-data/** || true &&
+gsutil -m rm -r gs://${WIKI_LANG}-wiki-graph-data/* || true &&
 gsutil -m cp -r "${NEO4J_HOME}/data/*" gs://${WIKI_LANG}-wiki-graph-data &&
 # Delete the Instance running this script
 export INSTANCE_NAME=$(curl -X GET http://metadata.google.internal/computeMetadata/v1/instance/name -H 'Metadata-Flavor: Google') &&\
