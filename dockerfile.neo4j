@@ -28,14 +28,14 @@ RUN wget https://github.com/neo4j/apoc/releases/download/${NEO4J_VERSION_DOWNLOA
 
 RUN mv apoc-${NEO4J_VERSION_DOWNLOAD}-core.jar apoc.jar
 
-RUN echo -e "\\n"server.default_listen_address=0.0.0.0           >> "${NEO4J_HOME}"/conf/neo4j.conf
-RUN echo -e "\\n"dbms.security.auth_enabled=false                >> "${NEO4J_HOME}"/conf/neo4j.conf
-RUN echo -e "\\n"dbms.tx_log.rotation.retention_policy=false     >> "${NEO4J_HOME}"/conf/neo4j.conf
-RUN echo -e "\\n"dbms.checkpoint.interval.tx=1000000             >> "${NEO4J_HOME}"/conf/neo4j.conf
-RUN echo -e "\\n"dbms.checkpoint.interval.time=60m               >> "${NEO4J_HOME}"/conf/neo4j.conf
-RUN echo -e "\\n"dbms.memory.heap.initial_size=12g             >> "${NEO4J_HOME}"/conf/neo4j.conf
-RUN echo -e "\\n"dbms.memory.heap.max_size=12g                 >> "${NEO4J_HOME}"/conf/neo4j.conf
-RUN echo -e "\\n"dbms.memory.pagecache.size=32g                >> "${NEO4J_HOME}"/conf/neo4j.conf
+RUN echo -e "\\n"server.default_listen_address=0.0.0.0          >> "${NEO4J_HOME}"/conf/neo4j.conf
+RUN echo -e "\\n"dbms.security.auth_enabled=false               >> "${NEO4J_HOME}"/conf/neo4j.conf
+RUN echo -e "\\n"dbms.tx_log.rotation.retention_policy=false    >> "${NEO4J_HOME}"/conf/neo4j.conf
+RUN echo -e "\\n"dbms.checkpoint.interval.tx=1000000            >> "${NEO4J_HOME}"/conf/neo4j.conf
+RUN echo -e "\\n"dbms.checkpoint.interval.time=60m              >> "${NEO4J_HOME}"/conf/neo4j.conf
+RUN echo -e "\\n"dbms.memory.heap.initial_size=12g              >> "${NEO4J_HOME}"/conf/neo4j.conf
+RUN echo -e "\\n"dbms.memory.heap.max_size=12g                  >> "${NEO4J_HOME}"/conf/neo4j.conf
+RUN echo -e "\\n"dbms.memory.pagecache.size=32g                 >> "${NEO4J_HOME}"/conf/neo4j.conf
 
 WORKDIR /
 
@@ -43,7 +43,7 @@ VOLUME /data /logs
 
 ##################################### Google Cloud #####################################
 
-ARG CLOUD_SDK_VERSION=481.0.0
+ARG CLOUD_SDK_VERSION=526.0.1
 ENV CLOUD_SDK_VERSION=$CLOUD_SDK_VERSION
 ENV PATH=/google-cloud-sdk/bin:$PATH
 RUN if [ `uname -m` = 'x86_64' ]; then echo -n "x86_64" > /tmp/arch; else echo -n "arm" > /tmp/arch; fi;
