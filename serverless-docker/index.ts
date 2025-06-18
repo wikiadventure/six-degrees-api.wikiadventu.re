@@ -68,13 +68,13 @@ app.get(
         const query = 
 `CYPHER runtime = parallel
 MATCH (from:WikiPage {id: ${start}}), (to:WikiPage {id: ${end}})
-MATCH rawPath = allShortestPaths((from)-[:WikiLink*]->(to))
-WITH collect(rawPath) AS allRawPaths
-WITH allRawPaths, apoc.coll.flatten([p IN allRawPaths | nodes(p)]) AS allNodes
-WITH allRawPaths, collect(DISTINCT allNodes) AS uniqueNodes
-WITH [p IN allRawPaths | [n IN nodes(p) | toInteger(n.id)]] AS paths,
-     apoc.map.fromPairs([n IN uniqueNodes | [toInteger(n.id), n.title]]) AS idToTitle
-RETURN idToTitle, paths`
+MATCH rawPaths = allShortestPaths((from)-[:WikiLink*]->(to))
+WITH collect(DISTINCT nodes(rawPaths)) AS allPathNodes
+UNWIND allPathNodes AS pathNodes
+UNWIND pathNodes AS node
+WITH DISTINCT node, pathNodes
+WITH collect([toInteger(node.id), node.title]) AS idToTitlePairs, collect([p IN pathNodes | toInteger(p.id)]) as paths
+RETURN apoc.map.fromPairs(idToTitlePairs) AS idToTitle, paths`
         const result = await db.session({ database: 'neo4j' }).executeRead(tx=>tx.run(query));
         const out = result.records[0].toObject();
         out.time = performance.now() - startTime;
