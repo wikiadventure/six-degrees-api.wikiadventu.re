@@ -38,6 +38,10 @@ RUN mkdir -p /data && chown neo4j:neo4j /data
 RUN echo -e "\n"dbms.security.auth_enabled=false            >> ${NEO4J_HOME}/conf/neo4j.conf
 RUN echo -e "\n"server.directories.data=/data               >> ${NEO4J_HOME}/conf/neo4j.conf
 RUN echo -e "\n"server.databases.default_to_read_only=true  >> ${NEO4J_HOME}/conf/neo4j.conf
+RUN echo -e "\\n"server.memory.heap.initial_size=10g        >> "${NEO4J_HOME}"/conf/neo4j.conf
+RUN echo -e "\\n"server.memory.heap.max_size=10g            >> "${NEO4J_HOME}"/conf/neo4j.conf
+RUN echo -e "\\n"server.memory.pagecache.size=15g           >> "${NEO4J_HOME}"/conf/neo4j.conf
+RUN sed -i 's/^db\.tx_log\.rotation\.retention_policy.*/db.tx_log.rotation.retention_policy=false/' "${NEO4J_HOME}"/conf/neo4j.conf
 
 WORKDIR /
 
