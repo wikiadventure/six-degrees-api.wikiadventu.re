@@ -14,7 +14,6 @@ import { zValidator } from '@hono/zod-validator';
 import { z } from "zod";
 import { driver } from "neo4j-driver";
 
-
 const app = new Hono();
 
 app.use('/*', cors());
@@ -36,6 +35,18 @@ const db = driver(
     { disableLosslessIntegers: true }
 );
 
+async function eagerLoadDbIntoPagecache() {
+    const startTime = performance.now();
+    const result = await db.session({ database: 'neo4j' }).executeRead(tx=>tx.run(
+`MATCH (n)
+OPTIONAL MATCH (n)-[r]->()
+RETURN count(n) as pages, count(r) as links`
+    ));
+    console.log("Db successfully loaded into pagecache");
+    console.log(result);
+    console.log(`Loaded in ${performance.now() - startTime} ms`);
+}
+
 const isUp = new Promise<void>(async (res,_) => {
     console.log(`Waiting Neo4j...`);
     const startTime = Date.now();
@@ -43,6 +54,7 @@ const isUp = new Promise<void>(async (res,_) => {
         try {
             await db.getServerInfo();
             console.log(`Neo4j up (${Date.now() - startTime}ms)`);
+            await eagerLoadDbIntoPagecache();
             res();
             return;
         } catch(e) {
@@ -68,13 +80,13 @@ app.get(
         const query = 
 `CYPHER runtime = parallel
 MATCH (from:WikiPage {id: ${start}}), (to:WikiPage {id: ${end}})
-MATCH rawPaths = allShortestPaths((from)-[:WikiLink*]->(to))
-WITH collect(DISTINCT nodes(rawPaths)) AS allPathNodes
-UNWIND allPathNodes AS pathNodes
-UNWIND pathNodes AS node
-WITH DISTINCT node, pathNodes
-WITH collect([toInteger(node.id), node.title]) AS idToTitlePairs, collect([p IN pathNodes | toInteger(p.id)]) as paths
-RETURN apoc.map.fromPairs(idToTitlePairs) AS idToTitle, paths`
+MATCH rawPath = allShortestPaths((from)-[:WikiLink*]->(to))
+WITH collect(rawPath) AS allRawPaths
+WITH allRawPaths, apoc.coll.flatten([p IN allRawPaths | nodes(p)]) AS allNodes
+WITH allRawPaths, collect(DISTINCT allNodes) AS uniqueNodes
+WITH [p IN allRawPaths | [n IN nodes(p) | toInteger(n.id)]] AS paths,
+     apoc.map.fromPairs([n IN uniqueNodes | [toInteger(n.id), n.title]]) AS idToTitle
+RETURN idToTitle, paths`
         const result = await db.session({ database: 'neo4j' }).executeRead(tx=>tx.run(query));
         const out = result.records[0].toObject();
         out.time = performance.now() - startTime;
