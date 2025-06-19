@@ -1,5 +1,5 @@
 {
-  "name": "sql-dump-to-neo4j",
+  "name": "sql-dump-to-falkordb",
   "module": "index.ts",
   "devDependencies": {
     "@types/node": "^20.12.11",
@@ -9,12 +9,14 @@
   "scripts": {
     "ts-node": "node --max-old-space-size=8192 --env-file=.env --loader ts-node/esm",
     "start": "node --max-old-space-size=10240 --loader ts-node/esm index.ts",
-    "start-GCP": "node --max-old-space-size=10240 --loader ts-node/esm indexGCP.ts"
+    "start-GCP": "node --max-old-space-size=10240 --loader ts-node/esm indexGCP.ts",
+    "start-local": "node --max-old-space-size=10240 --loader ts-node/esm indexLocal.ts"
   },
   "type": "module",
   "dependencies": {
+    "bottleneck": "^2.19.5",
     "large-map": "^1.0.0",
-    "neo4j-driver": "^5.28.1",
+    "redis": "^4.6.13",
     "zod": "^3.25.64"
   }
 }

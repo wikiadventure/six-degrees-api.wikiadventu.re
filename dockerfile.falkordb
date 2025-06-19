@@ -1,0 +1,46 @@
+FROM falkordb/falkordb:v4.10.1 AS base
+
+ENV PATH="/opt/google-cloud-sdk/bin:${PATH}"
+
+##################################### Google Cloud #####################################
+
+ARG CLOUD_SDK_VERSION=526.0.1
+ENV CLOUD_SDK_VERSION=$CLOUD_SDK_VERSION
+
+WORKDIR /opt
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    curl \
+    python3 \
+    python3-crcmod \
+    python3-openssl \
+    bash \
+    openssh-client \
+    git \
+    gnupg \
+    && if [ "$(uname -m)" = "x86_64" ]; then ARCH="x86_64"; else ARCH="arm"; fi \
+    && curl -O "https://dl.google.com/dl/cloudsdk/channels/rapid/downloads/google-cloud-sdk-${CLOUD_SDK_VERSION}-linux-${ARCH}.tar.gz" \
+    && tar xzf "google-cloud-sdk-${CLOUD_SDK_VERSION}-linux-${ARCH}.tar.gz" \
+    && rm "google-cloud-sdk-${CLOUD_SDK_VERSION}-linux-${ARCH}.tar.gz" \
+    && google-cloud-sdk/install.sh --quiet \
+    && gcloud config set core/disable_usage_reporting true \
+    && gcloud config set component_manager/disable_update_check true \
+    && gcloud config set metrics/environment github_docker_image \
+    && gcloud --version \
+    && apt-get clean && rm -rf /var/lib/apt/lists/*
+
+#######################################  Script  #######################################
+
+WORKDIR /project
+
+COPY . .
+
+WORKDIR /project/sql-dump-to-falkordb
+
+VOLUME /data 
+
+RUN npm i
+
+WORKDIR /project/
+
+ENTRYPOINT ["entrypoint.sh"]

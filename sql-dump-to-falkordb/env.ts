@@ -2,7 +2,7 @@ import z, { ZodError } from 'zod';
 
 const envSchema = z.object({
     USE_CACHE: z.coerce.number().default(1),
-    WIKI_LANG: z.string().min(1),
+    WIKI_LANG: z.string().min(1).default("fr"),
 }).catchall(z.string());
 
 

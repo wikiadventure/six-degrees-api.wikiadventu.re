@@ -2,12 +2,32 @@ import { promisify } from "node:util";
 import { exec } from "node:child_process";
 const execP = promisify(exec);
 import { parseDumpContent, sqlDumpStream, sqlDumpStreamFromWeb } from "./parser/dumpParser.js";
-import { db, initNeo4jIndex, insertLinks, insertPages, insertRedirects } from "./neo4j/connection.js";
 import { createDumpProgressLogger } from "./logger/dumpProgress.js";
 import LargeMapImport from "large-map";
 const LargeMap = LargeMapImport as unknown as typeof LargeMapImport.default;
 // import { CollectionType } from "arangojs/collection.js";
 import { env } from "./env.js";
+import { initFalkorDbIndex, insertLinks, insertPages, insertRedirects } from "./falkordb/connection.js";
+import Bottleneck from "bottleneck";
+
+const limiter = new Bottleneck({
+  maxConcurrent: 10,
+  reservoir: 10,
+
+});
+
+function waitForIdle(limiter) {
+  return new Promise<void>(resolve => {
+    // If the limiter is already idle, resolve immediately.
+    if (limiter.running() === 0 && limiter.queued() === 0) {
+      resolve();
+    } else {
+      // Otherwise, listen for the 'idle' event.
+      // Using .once() ensures the listener is removed after it's called.
+      limiter.once("idle", () => resolve());
+    }
+  });
+}
 
 export type WikiPage = {
     title: string,
@@ -20,7 +40,7 @@ export type Edge = {
     _to:number
 }
 
-await initNeo4jIndex();
+await initFalkorDbIndex();
 
 const PAGE_BATCH_SIZE           = 65_536;
 const PAGE_LOG_SIZE             = PAGE_BATCH_SIZE;
@@ -56,8 +76,7 @@ async function parseAndLoadPage() {
         count++;
 
         if (count % PAGE_BATCH_SIZE == 0) {
-            
-            await previousBatchPromise;
+            await limiter.ready();
             /**
              * The call of insert is not instant due to the neo4j driver lib
              * so we need to put the current batch into in it's own variable
@@ -67,8 +86,7 @@ async function parseAndLoadPage() {
             const batch = nextBatch;
             nextBatch = [];
 
-            previousBatchPromise = insertPages(batch);
-            // previousBatchPromise = Promise.resolve() as Promise<any>;
+            limiter.schedule(()=>insertPages(batch));
 
             if (count % PAGE_LOG_SIZE == 0) {
                 log(info.bytesRead, count);
@@ -76,10 +94,11 @@ async function parseAndLoadPage() {
         }
 
     }
-    await previousBatchPromise;
+    await limiter.ready();
     const batch = nextBatch;
     nextBatch = [];
-    await insertPages(batch);
+    limiter.schedule(()=>insertPages(batch));
+    await waitForIdle(limiter);
 }
 
 const redirectMap = new LargeMap<number,string>();
@@ -88,7 +107,6 @@ const toResolve:[number, string][] = [];
 async function parseAndLoadRedirect() {
 
     const { info, stream } = await sqlDumpStream("redirect");
-    let previousBatchPromise = Promise.resolve() as Promise<any>;
     let count = 0;
     let nextBatch:Edge[] = [];
     const { log } = createDumpProgressLogger(info.size, "Redirect ");
@@ -114,12 +132,11 @@ async function parseAndLoadRedirect() {
 
 
         if (count % REDIRECT_BATCH_SIZE == 0) {
-            await previousBatchPromise;
+            await limiter.ready();
 
             const batch = nextBatch;
             nextBatch = [];
-
-            previousBatchPromise = insertRedirects(batch);
+            limiter.schedule(()=>insertRedirects(batch));
             // previousBatchPromise = Promise.resolve() as Promise<any>;
 
             if (count % REDIRECT_LOG_SIZE == 0) {
@@ -136,13 +153,12 @@ async function parseAndLoadRedirect() {
             
         count++;
         if (count % REDIRECT_BATCH_SIZE == 0) {
-            await previousBatchPromise;
+            await limiter.ready();
 
             const batch = nextBatch;
             nextBatch = [];
 
-            previousBatchPromise = insertRedirects(batch);
-            // previousBatchPromise = Promise.resolve() as Promise<any>;
+            limiter.schedule(()=>insertRedirects(batch));
 
             if (count % REDIRECT_LOG_SIZE == 0) {
                 log(info.bytesRead, count);
@@ -151,14 +167,14 @@ async function parseAndLoadRedirect() {
 
     }
 
-    await previousBatchPromise;
+    await limiter.ready();
 
     const batch = nextBatch;
     nextBatch = [];
 
-    await insertRedirects(batch);
+    limiter.schedule(()=>insertRedirects(batch));
+    await waitForIdle(limiter);
     log(info.bytesRead, count);
-    nextBatch = [];
 }
 
 
@@ -185,7 +201,7 @@ async function parseLinkTarget() {
 async function parseAndLoadPageLinks() {
 
     const { info, stream } = await sqlDumpStream("pagelinks");
-    let previousBatchPromise = Promise.resolve() as Promise<any>;
+    
     let count = 0;
     let nextBatch:Edge[] = [];
     const { log } = createDumpProgressLogger(info.size, "PageLinks ");
@@ -213,25 +229,25 @@ async function parseAndLoadPageLinks() {
 
 
         if (count % PAGELINK_BATCH_SIZE == 0) {
-            await previousBatchPromise;
+            await limiter.ready();
 
             const batch = nextBatch;
             nextBatch = [];
+            limiter.schedule(()=>insertLinks(batch));
 
-            previousBatchPromise = insertLinks(batch);
-            // previousBatchPromise = Promise.resolve() as Promise<any>;
             if (count % PAGELINK_LOG_SIZE == 0) {
                 log(info.bytesRead, count);
             }
         }
 
     }
-    await previousBatchPromise;
+    await limiter.ready();
 
     const batch = nextBatch;
     nextBatch = [];
 
-    await insertLinks(batch);
+    limiter.schedule(()=>insertLinks(batch));
+    await waitForIdle(limiter);
     log(info.bytesRead, count);
     nextBatch = [];
 }
@@ -240,7 +256,6 @@ async function parseAndLoadPageLinksWithLinkTarget() {
     await parseLinkTarget();
 
     const { info, stream } = await sqlDumpStream("pagelinks");
-    let previousBatchPromise = Promise.resolve() as Promise<any>;
     let count = 0;
     let nextBatch:Edge[] = [];
     const { log } = createDumpProgressLogger(info.size, "PageLinks ");
@@ -269,27 +284,26 @@ async function parseAndLoadPageLinksWithLinkTarget() {
 
 
         if (count % PAGELINK_BATCH_SIZE == 0) {
-            await previousBatchPromise;
+            await limiter.ready();
 
             const batch = nextBatch;
             nextBatch = [];
-
-            previousBatchPromise = insertLinks(batch);
-            // previousBatchPromise = Promise.resolve() as Promise<any>;
+            limiter.schedule(()=>insertLinks(batch));
             if (count % PAGELINK_LOG_SIZE == 0) {
                 log(info.bytesRead, count);
             }
         }
 
     }
-    await previousBatchPromise;
+    await limiter.ready();
 
     const batch = nextBatch;
     nextBatch = [];
 
-    await insertLinks(batch);
+    limiter.schedule(()=>insertLinks(batch));
     log(info.bytesRead, count);
     nextBatch = [];
+    await waitForIdle(limiter);
 }
 
 function resolveRedirect(pageTitle):null|number {
@@ -312,12 +326,7 @@ function resolveRedirect(pageTitle):null|number {
 }
 await parseAndLoadPage();
 await parseAndLoadRedirect();
-if (["fr", "eo", "en"].includes(env.WIKI_LANG)) {
-    await parseAndLoadPageLinksWithLinkTarget();
-} else {
-    await parseAndLoadPageLinks();
-}
+await parseAndLoadPageLinksWithLinkTarget();
 
 console.log("finished");
 
-await db.close();
