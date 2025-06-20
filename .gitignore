@@ -7,3 +7,5 @@ serverless-docker/dump
 sql-dump-to-memgraph-rust
 dist
 query.cypher
+
+sql-dump-to-surreal/surreal-data
