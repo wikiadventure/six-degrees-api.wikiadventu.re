@@ -37,7 +37,33 @@
             },
             "dockerServerReadyAction": {
                 "pattern": "Debugger listening"
-              }
-          }
+            }
+        },
+        {
+            "name": "Debug rust-serverless",
+            "type": "lldb",
+            "request": "launch",
+            "program": "${workspaceFolder}/rust-serverless/target/debug/rust-serverless",
+            "preLaunchTask": "build-rust-serverless",
+            "cwd": "${workspaceFolder}/rust-serverless",
+            "args": [],
+            "sourceLanguages": ["rust"],
+            "env": {
+                "RUST_LOG": "info"
+            }
+        },
+        {
+            "name": "Debug sql-dump-to-rust",
+            "type": "lldb",
+            "request": "launch",
+            "program": "${workspaceFolder}/sql-dump-to-rust/target/debug/sql-dump-to-rust",
+            "preLaunchTask": "build-sql-dump-to-rust",
+            "cwd": "${workspaceFolder}/sql-dump-to-rust",
+            "args": [],
+            "sourceLanguages": ["rust"],
+            "env": {
+                "RUST_LOG": "info"
+            }
+        }
     ]
 }

@@ -13,3 +13,4 @@ cache
 node_modules
 *.gz
 *.sql
+cache

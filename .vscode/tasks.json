@@ -19,6 +19,36 @@
 				
 			  	"enableDebugging": true
 			}
-		  }
+		},
+		{
+			"label": "build-rust-serverless",
+			"type": "shell",
+			"command": "mise exec -- cargo build --package=rust-serverless",
+			"group": {
+				"kind": "build",
+				"isDefault": true
+			},
+			"problemMatcher": [
+				"$rustc"
+			],
+			"options": {
+				"cwd": "${workspaceFolder}/rust-serverless"
+			}
+		},
+		{
+			"label": "build-sql-dump-to-rust",
+			"type": "shell",
+			"command": "mise exec -- cargo build --package=sql-dump-to-rust",
+			"group": {
+				"kind": "build",
+				"isDefault": true
+			},
+			"problemMatcher": [
+				"$rustc"
+			],
+			"options": {
+				"cwd": "${workspaceFolder}/sql-dump-to-rust"
+			}
+		}
 	]
 }
