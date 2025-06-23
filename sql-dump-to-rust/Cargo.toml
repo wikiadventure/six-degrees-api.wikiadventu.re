@@ -18,3 +18,5 @@ sysinfo = "0.35.2"
 rkyv = { version = "0.8.10", features = ["pointer_width_64"] }
 once_cell = "1.21.3"
 rustc-hash = "2.1.1"
+num_threads = "0.1.7"
+dotenv = "0.15.0"

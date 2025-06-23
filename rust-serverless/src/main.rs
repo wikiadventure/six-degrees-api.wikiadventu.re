@@ -5,7 +5,6 @@ use once_cell::sync::Lazy; // Import Lazy
 use rayon::prelude::*;
 use rkyv::rend::u32_le;
 use rkyv::{access, rancor, Archive, Deserialize, Serialize};
-use rustc_hash::FxHashMap;
 use std::collections::{HashMap, VecDeque};
 use std::fs::File;
 
@@ -208,7 +207,7 @@ async fn main() -> std::io::Result<()> {
     log::info!("Graph offsets {}", graph.offsets.len());
     log::info!("Graph  pages offsets {}", graph.offsets[67819+1]);
     log::info!("Graph  pages offsets {}", graph.offsets[67819+2]);
-    for v  in graph.offsets.to_vec().iter().take(200) {
+    for v  in graph.offsets.to_vec().iter().rev().take(10) {
         log::info!("- {}", v);
     }
 

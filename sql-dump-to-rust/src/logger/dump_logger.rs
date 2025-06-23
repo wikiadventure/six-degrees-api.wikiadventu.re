@@ -30,7 +30,7 @@ impl DumpProgressLogger {
     pub fn log(&mut self, bytes_read_amount: u64, parsed_amount: u64) {
         let now_timestamp = Instant::now();
         let mo_read = bytes_read_amount as f64 / 1024.0 / 1024.0;
-        let mo_since = (bytes_read_amount - self.last_bytes_read_amount) as f64 / 1024.0 / 1024.0;
+        let mo_since = (bytes_read_amount.saturating_sub(self.last_bytes_read_amount)) as f64 / 1024.0 / 1024.0;
 
         let total_spend_time = self.start_timestamp.elapsed().as_secs_f64();
         let spend_time = self.last_timestamp.elapsed().as_secs_f64();
@@ -39,12 +39,12 @@ impl DumpProgressLogger {
             return; // Avoid division by zero if called too frequently
         }
 
-        let last_amount_parsed = parsed_amount - self.last_parsed_amount;
+        let last_amount_parsed =  parsed_amount.saturating_sub(self.last_parsed_amount);
         let parsed_per_sec = last_amount_parsed as f64 / spend_time;
         let mo_per_sec = mo_since / spend_time;
 
         let estimation = if mo_per_sec > 0.0 {
-            let mo_remain = (self.dump_bytes_size - bytes_read_amount) as f64 / 1024.0 / 1024.0;
+            let mo_remain = (self.dump_bytes_size.saturating_sub(bytes_read_amount)) as f64 / 1024.0 / 1024.0;
             let est_in_sec = (mo_remain / mo_per_sec).floor() as u64;
             let h = est_in_sec / 3600;
             let m = (est_in_sec % 3600) / 60;
