@@ -7,7 +7,8 @@ docker login -u $DOCKER_USERNAME -p $DOCKER_TOKEN &&
 docker build -f dockerfile -t sacramentix1225/${WIKI_LANG}wiki-rust-graph . &&
 docker push sacramentix1225/${WIKI_LANG}wiki-rust-graph &&
 gcloud auth configure-docker europe-west9-docker.pkg.dev --quiet &&
-docker push europe-west9-docker.pkg.dev/sixdegreesofwikiadventure/wiki-graph/${WIKI_LANG}wiki-rust-graph &&
+docker tag sacramentix1225/${WIKI_LANG}wiki-rust-graph europe-west9-docker.pkg.dev/wikiadventure/wiki-graph/${WIKI_LANG}wiki-rust-graph &&\
+docker push europe-west9-docker.pkg.dev/wikiadventure/wiki-graph/${WIKI_LANG}wiki-rust-graph &&
 # Create a new Google Cloud Run
 gcloud run deploy ${WIKI_LANG}wiki-rust-graph-serverless --image=europe-west9-docker.pkg.dev/wikiadventure/wiki-graph/${WIKI_LANG}wiki-rust-graph:latest \
 --cpu=8 --max-instances=4 --memory=32Gi --port=8080 --allow-unauthenticated \
