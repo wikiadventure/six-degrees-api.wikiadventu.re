@@ -32,4 +32,6 @@ jobs:
         env:
           WIKI_LANG: ${{ github.event.inputs.WIKI_LANG }}
           GCP_SERVICE_ACCOUNT_EMAIL: ${{ secrets.GCP_SERVICE_ACCOUNT_EMAIL }}
+          DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
+          DOCKER_TOKEN: ${{ secrets.DOCKER_TOKEN }}
         run: npx ts-node .github/workflows/LaunchComputeToLowCarbonFootprintEurope.ts
