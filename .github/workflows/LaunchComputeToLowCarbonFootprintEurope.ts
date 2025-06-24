@@ -3,8 +3,8 @@ import { promisify } from "node:util";
 const execP = promisify(exec);
 
 const WIKI_LANG                 = process.env.WIKI_LANG;
-const DOCKER_USERNAME           = process.env.WIKI_LANG;
-const DOCKER_TOKEN              = process.env.WIKI_LANG;
+const DOCKER_USERNAME           = process.env.DOCKER_USERNAME;
+const DOCKER_TOKEN              = process.env.DOCKER_TOKEN;
 const GCP_SERVICE_ACCOUNT_EMAIL = process.env.GCP_SERVICE_ACCOUNT_EMAIL;
 
 const lowCarbonFootprintRegionOrdered = [
