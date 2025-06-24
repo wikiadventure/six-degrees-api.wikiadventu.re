@@ -3,31 +3,35 @@ FROM alpine:latest AS build
 
 # Install necessary packages including Docker, Rust, and OpenSSL dependencies
 RUN apk add --no-cache \
-    docker \
     rust \
-    openssl \
-    openssl-dev \
-    pkgconfig \
     cargo \
+    musl-dev \
+    gcc \
+    libc-dev \
+    openssl-dev \
+    openssl-libs-static \
+    pkgconfig \
     git \
-    bash
+    bash \
+    curl
 
-# Set up Docker in Docker
-RUN mkdir -p /var/lib/docker
+# Install rustup
+RUN curl https://sh.rustup.rs -sSf | sh -s -- -y
 
 # Set environment variables for Rust
 ENV PATH="/root/.cargo/bin:$PATH"
 
-RUN cargo install cross
+# Install the musl target
+RUN rustup target add x86_64-unknown-linux-musl
 
 # Copy the source code for sql-dump-to-rust and rust-serverless
 COPY ./sql-dump-to-rust /build/sql-dump-to-rust
 
-RUN cd /build/sql-dump-to-rust && cargo build --release
+RUN cd /build/sql-dump-to-rust && cargo build --release --target x86_64-unknown-linux-musl
 
 COPY ./rust-serverless /build/rust-serverless
 
-RUN cd /build/rust-serverless && cross build --release --target x86_64-unknown-linux-musl
+RUN cd /build/rust-serverless && cargo build --release --target x86_64-unknown-linux-musl
 
 FROM docker:dind
 
@@ -36,7 +40,7 @@ RUN apk add --no-cache \
         openssl-dev \
         libgcc
 
-COPY --from=build /build/sql-dump-to-rust/target/release/sql-dump-to-rust /build/sql-dump-to-rust
+COPY --from=build /build/sql-dump-to-rust/target/x86_64-unknown-linux-musl/release/sql-dump-to-rust /build/sql-dump-to-rust
 COPY --from=build /build/rust-serverless/target/x86_64-unknown-linux-musl/release/rust-serverless /prod/rust-serverless
 COPY dockerfile.serverless /prod/dockerfile
 COPY entrypointGCP.sh entrypointGCP.sh
