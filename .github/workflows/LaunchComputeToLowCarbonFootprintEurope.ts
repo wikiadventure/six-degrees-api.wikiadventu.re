@@ -3,6 +3,8 @@ import { promisify } from "node:util";
 const execP = promisify(exec);
 
 const WIKI_LANG                 = process.env.WIKI_LANG;
+const DOCKER_USERNAME           = process.env.WIKI_LANG;
+const DOCKER_TOKEN              = process.env.WIKI_LANG;
 const GCP_SERVICE_ACCOUNT_EMAIL = process.env.GCP_SERVICE_ACCOUNT_EMAIL;
 
 const lowCarbonFootprintRegionOrdered = [
@@ -40,7 +42,7 @@ for (const region of lowCarbonFootprintRegionOrdered) {
               --container-restart-policy=never \
               --container-privileged \
               --container-mount-host-path=host-path=/var/run/docker.sock,mode=rw,mount-path=/var/run/docker.sock \
-              --container-env=WIKI_LANG=${WIKI_LANG},USE_MULTITHREAD=true \
+              --container-env=WIKI_LANG=${WIKI_LANG},DOCKER_USERNAME=${DOCKER_USERNAME},DOCKER_TOKEN=${DOCKER_TOKEN},USE_MULTITHREAD=true \
               --no-shielded-secure-boot \
               --shielded-vtpm \
               --shielded-integrity-monitoring \
