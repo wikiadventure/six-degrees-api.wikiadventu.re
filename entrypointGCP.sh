@@ -3,7 +3,7 @@ cd /build/ &&
 /build/sql-dump-to-rust &&
 mv graph.rkyv /prod/ &&
 cd /prod &&
-echo $DOCKER_TOKEN | docker login -u $DOCKER_USERNAME --password-stdin &&
+docker login -u $DOCKER_USERNAME -p $DOCKER_TOKEN &&
 docker build -f dockerfile -t sacramentix1225/${WIKI_LANG}wiki-rust-graph .
 docker push sacramentix1225/${WIKI_LANG}wiki-rust-graph &&
 gcloud auth configure-docker europe-west9-docker.pkg.dev --quiet &&
