@@ -36,7 +36,7 @@ for (const region of lowCarbonFootprintRegionOrdered) {
               --boot-disk-size=250GB \
               --boot-disk-type=pd-ssd \
               --boot-disk-device-name=generate-wiki-graph \
-              --container-image=europe-docker.pkg.dev/wikiadventure/wiki-graph/generate-wiki-graph-volume-neo4j:latest \
+              --container-image=europe-docker.pkg.dev/wikiadventure/wiki-graph/generate-wiki-rust-graph:latest \
               --container-restart-policy=never \
               --container-privileged \
               --container-mount-host-path=host-path=/var/run/docker.sock,mode=rw,mount-path=/var/run/docker.sock \
