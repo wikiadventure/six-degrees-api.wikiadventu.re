@@ -3,15 +3,16 @@ use flate2::read::GzDecoder;
 use indicatif::{ProgressBar, ProgressStyle};
 use lazy_static::lazy_static;
 use async_stream::stream;
-use futures::StreamExt;
+use futures::{StreamExt, TryStreamExt};
 use regex::Regex;
 use reqwest::Client;
 use rkyv::{
     rancor::Error, to_bytes, Archive, Deserialize, Serialize
 };
+use tokio::io::{self, AsyncWriteExt};
 use utf8_chars::BufReadCharsExt;
 use std::{collections::HashMap, fs::File, io::{BufRead, BufReader, Read, Seek, SeekFrom, Write}, num::NonZero, sync::Arc};
-use tokio::sync::Mutex;
+use tokio::{sync::Mutex, task};
 use rustc_hash::{FxBuildHasher, FxHashMap};
 use crate::dump_logger::DumpProgressLogger;
 #[path = "logger/dump_logger.rs"] mod dump_logger;
@@ -93,6 +94,12 @@ async fn sql_dump_stream_from_cache(file_type: &str) -> Result<SqlDumpStream, Bo
 }
 
 async fn sql_dump_download_gunzipped(file_type: &str) -> Result<(), Box<dyn std::error::Error>> {
+    use async_compression::futures::bufread::GzipDecoder;
+    use futures::{
+        io::{self, BufReader, ErrorKind},
+        prelude::*,
+    };
+
     let path = format!("cache/{}/{}wiki-latest-{}.sql", &*WIKI_LANG, &*WIKI_LANG, file_type);
     let file_path = std::path::Path::new(&path);
     if file_path.exists() {
@@ -117,16 +124,40 @@ async fn sql_dump_download_gunzipped(file_type: &str) -> Result<(), Box<dyn std:
         std::fs::create_dir_all(parent)?;
     }
 
-    let mut file = std::fs::File::create(file_path)?;
-    let body = res.bytes().await?;
-    let mut decoder = flate2::read::GzDecoder::new(std::io::Cursor::new(body));
-    let mut buffer = [0; 8192];
-    while let Ok(bytes_read) = decoder.read(&mut buffer) {
+    let mut file = tokio::fs::File::create(file_path).await?;
+
+    let mut downloaded_size = 0;
+
+    let reader = res
+        .bytes_stream()
+        .map(|chunk| {
+            match chunk {
+                Ok(bytes) => {
+                    downloaded_size += bytes.len() as u64;
+                    pb.set_position(downloaded_size); // Update progress bar
+                    Ok(bytes)
+                }
+                Err(e) => Err(io::Error::new(ErrorKind::Other, e)),
+            }
+        })
+        .map_err(|e| io::Error::new(ErrorKind::Other, e))
+        .into_async_read();
+    let mut decoder = GzipDecoder::new(BufReader::new(reader));
+
+    let mut buffer = [0u8; 8192];
+
+    // Read and write in chunks
+    loop {
+        // Read a chunk from the decoder
+        let bytes_read = 
+            decoder.read(&mut buffer).await.expect("Decode failed");
         if bytes_read == 0 {
-            break;
+            break; // EOF
         }
-        file.write_all(&buffer[..bytes_read])?;
-        pb.inc(bytes_read as u64);
+
+        // Write the chunk to the destination file
+        file.write_all_buf(&mut &buffer[..bytes_read]).await.expect("Failed writing dump to file");
+        // file.write_all(&buffer[..bytes_read]).await?;
     }
 
     pb.finish_with_message("Downloaded");

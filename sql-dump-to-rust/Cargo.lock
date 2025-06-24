@@ -33,6 +33,19 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7c02d123df017efcdfbd739ef81735b36c5ba83ec3c59c80a9d7ecc718f92e50"
 
 [[package]]
+name = "async-compression"
+version = "0.4.25"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "40f6024f3f856663b45fd0c9b6f2024034a702f453549449e0d84a305900dad4"
+dependencies = [
+ "flate2",
+ "futures-core",
+ "futures-io",
+ "memchr",
+ "pin-project-lite",
+]
+
+[[package]]
 name = "async-gen"
 version = "0.2.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1375,11 +1388,13 @@ dependencies = [
 name = "sql-dump-to-rust"
 version = "0.1.0"
 dependencies = [
+ "async-compression",
  "async-gen",
  "async-stream",
  "dotenv",
  "flate2",
  "futures",
+ "futures-util",
  "indicatif",
  "lazy_static",
  "num_threads",
@@ -1390,6 +1405,7 @@ dependencies = [
  "rustc-hash",
  "sysinfo",
  "tokio",
+ "tokio-util",
  "utf8-chars",
 ]
 

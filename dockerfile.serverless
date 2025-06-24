@@ -1,0 +1,18 @@
+FROM alpine AS builder
+
+WORKDIR /app
+COPY rust-serverless /app/rust-serverless
+COPY graph.rkyv /app/graph.rkyv
+
+# Ensure the binary has executable permissions
+RUN chmod +x /app/rust-serverless
+
+FROM gcr.io/distroless/base:nonroot
+
+COPY --from=builder /app /app
+
+WORKDIR /app
+
+CMD ["./rust-serverless"]
+
+EXPOSE 8080

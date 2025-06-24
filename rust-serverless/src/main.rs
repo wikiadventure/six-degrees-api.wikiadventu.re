@@ -214,13 +214,13 @@ async fn main() -> std::io::Result<()> {
     let port_str = std::env::var("PORT").unwrap_or_else(|_| "8080".to_string());
     let port = port_str.parse::<u16>().unwrap_or(8080);
 
-    log::info!("Starting server at http://127.0.0.1:{}", port);
+    log::info!("Starting server at http://0.0.0.0:{}", port);
     HttpServer::new(move || {
         App::new()
             .app_data(graph_data.clone())
             .service(all_shortest_path)
     })
-    .bind(("127.0.0.1", port))?
+    .bind(("0.0.0.0", port))?
     .run()
     .await
 }
