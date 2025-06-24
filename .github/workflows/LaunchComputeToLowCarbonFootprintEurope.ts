@@ -23,7 +23,7 @@ for (const region of lowCarbonFootprintRegionOrdered) {
         const zone = `${region}-${letter}`;
         console.log(`Try to launch ${WIKI_LANG} graph compute in zone ${zone} with machine type ${machineType}`);
         const command = execP(`\
-            gcloud compute instances create-with-container generate-${WIKI_LANG}-wiki-graph-volume-neo4j \
+            gcloud compute instances create-with-container generate-${WIKI_LANG}wiki-rust-graph \
               --project=wikiadventure \
               --zone="${zone}" \
               --machine-type=${machineType} \
@@ -40,7 +40,7 @@ for (const region of lowCarbonFootprintRegionOrdered) {
               --container-restart-policy=never \
               --container-privileged \
               --container-mount-host-path=host-path=/var/run/docker.sock,mode=rw,mount-path=/var/run/docker.sock \
-              --container-env=WIKI_LANG=${WIKI_LANG} \
+              --container-env=WIKI_LANG=${WIKI_LANG},USE_MULTITHREAD=true \
               --no-shielded-secure-boot \
               --shielded-vtpm \
               --shielded-integrity-monitoring \
