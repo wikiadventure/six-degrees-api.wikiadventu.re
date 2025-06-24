@@ -5,11 +5,9 @@
 .vscode
 .env
 .env.docker
-.env.sample
-infra
-serverless-docker
-build
+.env.prod
+sql-dump-to-rust/target
+sql-dump-to-rust/cache
+rust-serverless/target
 cache
-node_modules
-*.gz
-*.sql
+**/*.rkyv

@@ -1,9 +1,7 @@
-build
-cache
-node_modules
 .env
 .env.docker
-serverless-docker/dump
-sql-dump-to-memgraph-rust
-dist
-query.cypher
+sql-dump-to-rust/target
+sql-dump-to-rust/cache
+rust-serverless/target
+cache
+**/*.rkyv
