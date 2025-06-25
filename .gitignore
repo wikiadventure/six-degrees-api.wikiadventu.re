@@ -5,4 +5,5 @@ sql-dump-to-rust/target
 sql-dump-to-rust/cache
 rust-serverless/target
 cache
+**/node_modules
 **/*.rkyv

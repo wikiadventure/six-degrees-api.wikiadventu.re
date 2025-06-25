@@ -19,6 +19,36 @@ const lowCarbonFootprintRegionOrdered = [
 
 const machineType = "n1-standard-16";
 
+const checkAndDeleteInstanceScript = `#!/bin/bash
+
+# Add a cron job to check for running containers every 5 minutes
+cat <<EOF > /etc/cron.d/check_containers
+*/5 * * * * root /usr/local/bin/check_containers.sh
+EOF
+
+# Create the container-checking script
+cat <<EOF > /usr/local/bin/check_containers.sh
+#!/bin/bash
+
+# Check for running containers
+if ! docker ps | grep -q .; then
+  echo "No containers running. Deleting instance..."
+
+  # Get the instance name and zone
+  INSTANCE_NAME=$(curl -s "http://metadata.google.internal/computeMetadata/v1/instance/name" -H "Metadata-Flavor: Google")
+  INSTANCE_ZONE=$(curl -s "http://metadata.google.internal/computeMetadata/v1/instance/zone" -H "Metadata-Flavor: Google" | awk -F'/' '{print $NF}')
+
+  # Delete the instance
+  gcloud compute instances delete "$INSTANCE_NAME" --zone="$INSTANCE_ZONE" --quiet
+fi
+EOF
+
+# Make the script executable
+chmod +x /usr/local/bin/check_containers.sh
+
+# Start the cron service
+service cron start`;
+
 for (const region of lowCarbonFootprintRegionOrdered) {
     const zoneLetters = region != "europe-west1" ? ["a","b","c"] : ["b","c","d"];
     for (const letter of zoneLetters) {
@@ -47,7 +77,8 @@ for (const region of lowCarbonFootprintRegionOrdered) {
               --shielded-vtpm \
               --shielded-integrity-monitoring \
               --labels=goog-ec-src=vm_add-gcloud \
-              --reservation-affinity=any`
+              --reservation-affinity=any \
+              --metadata=startup-script='${checkAndDeleteInstanceScript}'`
         );
         try {
             const { stdout, stderr } = await command;
