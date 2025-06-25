@@ -1,4 +1,4 @@
-name: Launch GCP compute engine to deploy Cloud run api
+name: Launch Graph gen on GCP compute engine and deploy to cloud run
 
 on:
   workflow_dispatch:
