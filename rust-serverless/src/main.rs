@@ -1,4 +1,5 @@
 use actix_web::{get, web, App, HttpServer, Responder, HttpResponse};
+use actix_cors::Cors;
 use env_logger;
 use memmap2::Mmap;
 use once_cell::sync::Lazy; // Import Lazy
@@ -217,6 +218,7 @@ async fn main() -> std::io::Result<()> {
     log::info!("Starting server at http://0.0.0.0:{}", port);
     HttpServer::new(move || {
         App::new()
+            .wrap(Cors::default().allow_any_origin()) // Add CORS middleware to allow all origins
             .app_data(graph_data.clone())
             .service(all_shortest_path)
     })
