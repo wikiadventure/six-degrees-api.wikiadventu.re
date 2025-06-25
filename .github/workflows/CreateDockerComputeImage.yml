@@ -1,4 +1,4 @@
-name: Generate Docker image for GCP compute
+name: Gen Compute GCP Docker image
 
 on:
   workflow_dispatch:
