@@ -36,7 +36,7 @@ if ! docker ps | grep -q .; then
 
   # Get the instance name and zone
   INSTANCE_NAME=$(curl -s "http://metadata.google.internal/computeMetadata/v1/instance/name" -H "Metadata-Flavor: Google")
-  INSTANCE_ZONE=$(curl -s "http://metadata.google.internal/computeMetadata/v1/instance/zone" -H "Metadata-Flavor: Google" | awk -F'/' '{print $NF}')
+  INSTANCE_ZONE=$(curl -s "http://metadata.google.internal/computeMetadata/v1/instance/zone" -H "Metadata-Flavor: Google" | awk -F"/" "{print $NF}")
 
   # Delete the instance
   gcloud compute instances delete "$INSTANCE_NAME" --zone="$INSTANCE_ZONE" --quiet
