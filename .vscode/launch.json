@@ -6,40 +6,6 @@
     
     "configurations": [
         {
-            "cwd": "${workspaceFolder}/sql-dump-to-memgraph",
-            "command": "npm run ts-node -- ${file}",
-            "name": "Debug memgraph file",
-            "request": "launch",
-            "type": "node-terminal"
-        },
-        {
-            "cwd": "${workspaceFolder}/sql-dump-to-arango",
-            "command": "npm run ts-node -- ${file}",
-            "name": "Debug arango file",
-            "request": "launch",
-            "type": "node-terminal"
-        },
-        {
-            "cwd": "${workspaceFolder}/sql-dump-to-neo4j",
-            "command": "npm run ts-node -- ${file}",
-            "name": "Debug neo4j file",
-            "request": "launch",
-            "type": "node-terminal"
-        },
-        {
-            "name": "Docker Node.js Launch",
-            "type": "docker",
-            "request": "launch",
-            "preLaunchTask": "docker-run: debug",
-            "platform": "node",
-            "node": {
-                "remoteRoot": "/project"
-            },
-            "dockerServerReadyAction": {
-                "pattern": "Debugger listening"
-            }
-        },
-        {
             "name": "Debug rust-serverless",
             "type": "lldb",
             "request": "launch",
