@@ -31,6 +31,8 @@ lazy_static! {
 struct CsrGraph {
     offsets: Vec<u32>,
     edges: Vec<u32>,
+    reverse_offsets: Vec<u32>,
+    reverse_edges: Vec<u32>,
     page_id_to_index: HashMap<u32, u32>,
     index_to_page_id: HashMap<u32, u32>,
 }
@@ -848,6 +850,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let mut logger = DumpProgressLogger::new(pages_links.len().try_into().unwrap(), "Building CSR".to_string());
 
+    println!("Creating page_id_to_index");
+
     let mut page_ids: Vec<u32> = pages_links.keys().copied().collect();
     page_ids.sort_unstable();
 
@@ -857,7 +861,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .map(|(i, page_id)| (*page_id, i as u32))
         .collect();
 
+    println!("Creating index_to_page_id");
+
     let index_to_page_id: HashMap<u32, u32> = page_id_to_index.iter().map(|(&k, &v)| (v, k)).collect();
+
+    println!("Creating offsets and edges");
 
     let mut offsets:Vec<u32> = Vec::with_capacity(page_ids.len() + 1);
     let mut edges = Vec::with_capacity((*links_count).try_into().expect("Value out of range for usize"));
@@ -880,11 +888,39 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
     }
 
+    println!("Creating reverse_offsets and reverse_edges");
+
+    let mut reverse_offsets: Vec<u32> = Vec::with_capacity(page_ids.len() + 1);
+    let mut reverse_edges: Vec<u32> = Vec::with_capacity((*links_count).try_into().expect("Value out of range for usize"));
+    reverse_offsets.push(0);
+    
+    // Temporary structure to store reverse adjacency list
+    let mut reverse_adjacency_list: Vec<Vec<u32>> = vec![Vec::new(); page_ids.len()];
+
+    for (source_index, &offset_start) in offsets.iter().enumerate().take(offsets.len() - 1) {
+        let offset_end = offsets[source_index + 1];
+        for edge_index in offset_start..offset_end {
+            let target_index = edges[edge_index as usize];
+            reverse_adjacency_list[target_index as usize].push(source_index as u32);
+        }
+        i += 1;
+        if i % 65_536 == 0 {
+            logger.log(i.into(), i.into());
+        }
+    }
+
+    for reverse_links in &reverse_adjacency_list {
+        reverse_edges.extend(reverse_links);
+        reverse_offsets.push(reverse_edges.len() as u32);
+    }
+
     logger.log(i.into(), i.into());
     println!("\nBuild of Compressed Sparse Row Graph complete");
     let graph = CsrGraph {
         offsets,
         edges,
+        reverse_offsets,
+        reverse_edges,
         page_id_to_index,
         index_to_page_id
     };
