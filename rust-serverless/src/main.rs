@@ -6,9 +6,9 @@ use once_cell::sync::Lazy; // Import Lazy
 use rayon::prelude::*;
 use rkyv::rend::u32_le;
 use rkyv::{access, rancor, Archive, Deserialize, Serialize};
-use std::collections::{HashMap, VecDeque};
+use rustc_hash::{FxBuildHasher, FxHashMap, FxHashSet};
+use std::collections::HashMap;
 use std::fs::File;
-use std::sync::{Arc, Mutex};
 
 #[derive(Archive, Serialize, Deserialize, Debug, PartialEq)]
 struct CsrGraph {
@@ -42,196 +42,184 @@ struct AppState {
     graph: &'static ArchivedCsrGraph,
 }
 
+fn reconstruct_paths(
+    node: u32,
+    start_node: u32,
+    parents: &FxHashMap<u32, Vec<u32>>,
+) -> Vec<Vec<u32>> {
+    if node == start_node {
+        return vec![vec![start_node]];
+    }
+
+    let mut paths = Vec::new();
+    if let Some(parent_nodes) = parents.get(&node) {
+        for &parent_node in parent_nodes {
+            let parent_paths = reconstruct_paths(parent_node, start_node, parents);
+            for mut path in parent_paths {
+                path.push(node);
+                paths.push(path);
+            }
+        }
+    }
+    paths
+}
+
 fn find_all_shortest_path(
     graph: &'static ArchivedCsrGraph,
     start_page_id: u32,
     end_page_id: u32,
 ) -> Vec<Vec<u32>> {
-    let start_page_id_le = u32_le::from_native(start_page_id);
-    let end_page_id_le = u32_le::from_native(end_page_id);
-
-    let start_page_idx = *graph.page_id_to_index.get(&start_page_id_le).unwrap_or(&u32_le::from(0));
-    let end_page_idx = *graph.page_id_to_index.get(&end_page_id_le).unwrap_or(&u32_le::from(0));
-
-    log::info!("Find all shortest path from {} to {}", start_page_id, end_page_id);
-    log::info!("Mapped to index        from {} to {}", start_page_idx, end_page_idx);
-
-    let start_idx = match graph.page_id_to_index.get(&start_page_id_le) {
-        Some(&id) => u32::from(id) as usize,
-        None => return Vec::new(),
+    let start_node = match graph.page_id_to_index.get(&u32_le::from_native(start_page_id)) {
+        Some(id) => id.to_native(),
+        None => return vec![],
     };
-    let end_idx = match graph.page_id_to_index.get(&end_page_id_le) {
-        Some(&id) => u32::from(id) as usize,
-        None => return Vec::new(),
+    let end_node = match graph.page_id_to_index.get(&u32_le::from_native(end_page_id)) {
+        Some(id) => id.to_native(),
+        None => return vec![],
     };
 
-    if start_idx == end_idx {
+    if start_node == end_node {
         return vec![vec![start_page_id]];
     }
 
-    let num_nodes = graph.offsets.len() - 1;
+    // Use HashSets for frontiers for efficient lookups and to represent levels.
+    let mut forward_frontier = FxHashSet::with_hasher(FxBuildHasher::default());
+    forward_frontier.insert(start_node);
+    let mut backward_frontier = FxHashSet::with_hasher(FxBuildHasher::default());
+    backward_frontier.insert(end_node);
 
-    let dist_forward = Arc::new(Mutex::new(vec![u32::MAX; num_nodes]));
-    let dist_reverse = Arc::new(Mutex::new(vec![u32::MAX; num_nodes]));
-    let parents_forward = Arc::new(Mutex::new(vec![Vec::new(); num_nodes]));
-    let parents_reverse = Arc::new(Mutex::new(vec![Vec::new(); num_nodes]));
+    // Visited maps store distances and parents.
+    let mut forward_dist: FxHashMap<u32, u32> = FxHashMap::with_hasher(FxBuildHasher::default());
+    forward_dist.insert(start_node, 0);
+    let mut backward_dist: FxHashMap<u32, u32> = FxHashMap::with_hasher(FxBuildHasher::default());
+    backward_dist.insert(end_node, 0);
 
-    let queue_forward = Arc::new(Mutex::new(VecDeque::new()));
-    let queue_reverse = Arc::new(Mutex::new(VecDeque::new()));
+    let mut forward_parents: FxHashMap<u32, Vec<u32>> = FxHashMap::with_hasher(FxBuildHasher::default());
+    let mut backward_parents: FxHashMap<u32, Vec<u32>> = FxHashMap::with_hasher(FxBuildHasher::default());
 
-    let shortest_dist = Arc::new(Mutex::new(u32::MAX));
-    let meeting_point = Arc::new(Mutex::new(None));
+    let mut meeting_nodes = FxHashSet::with_hasher(FxBuildHasher::default());
+    let mut shortest_path_len = u32::MAX;
+    let mut forward_depth = 0;
+    let mut backward_depth = 0;
 
-    dist_forward.lock().unwrap()[start_idx] = 0;
-    dist_reverse.lock().unwrap()[end_idx] = 0;
-    queue_forward.lock().unwrap().push_back(start_idx);
-    queue_reverse.lock().unwrap().push_back(end_idx);
-
-    while !queue_forward.lock().unwrap().is_empty() || !queue_reverse.lock().unwrap().is_empty() {
-        if let Some(u_idx) = queue_forward.lock().unwrap().pop_front() {
-            if dist_forward.lock().unwrap()[u_idx] > *shortest_dist.lock().unwrap() {
-                continue;
-            }
-
-            let neighbors_start = u32::from(graph.offsets[u_idx]) as usize;
-            let neighbors_end = u32::from(graph.offsets[u_idx + 1]) as usize;
-
-            graph.edges[neighbors_start..neighbors_end]
-                .par_iter()
-                .for_each(|&v_idx_le| {
-                    let v_idx = u32::from(v_idx_le) as usize;
-                    let u_dist = dist_forward.lock().unwrap()[u_idx];
-
-                    let mut dist_forward = dist_forward.lock().unwrap();
-                    let mut parents_forward = parents_forward.lock().unwrap();
-                    let mut queue_forward = queue_forward.lock().unwrap();
-
-                    if dist_forward[v_idx] > u_dist + 1 {
-                        dist_forward[v_idx] = u_dist + 1;
-                        parents_forward[v_idx].clear();
-                        parents_forward[v_idx].push(u_idx);
-                        queue_forward.push_back(v_idx);
-                    } else if dist_forward[v_idx] == u_dist + 1 {
-                        parents_forward[v_idx].push(u_idx);
-                    }
-
-                    let dist_reverse = dist_reverse.lock().unwrap();
-                    let mut shortest_dist = shortest_dist.lock().unwrap();
-                    let mut meeting_point = meeting_point.lock().unwrap();
-
-                    if dist_reverse[v_idx] != u32::MAX {
-                        let total_dist = dist_forward[v_idx] + dist_reverse[v_idx];
-                        if total_dist < *shortest_dist {
-                            *shortest_dist = total_dist;
-                            *meeting_point = Some(v_idx);
-                        }
-                    }
-                });
+    while !forward_frontier.is_empty() && !backward_frontier.is_empty() {
+        // Stop if we can't find a shorter path than we've already found.
+        if forward_depth + backward_depth >= shortest_path_len {
+            break;
         }
 
-        if let Some(u_idx) = queue_reverse.lock().unwrap().pop_front() {
-            if dist_reverse.lock().unwrap()[u_idx] > *shortest_dist.lock().unwrap() {
-                continue;
+        // Python script trick: expand the frontier with fewer outgoing links.
+        let forward_link_count: usize = forward_frontier.par_iter().map(|&u| {
+            let start = graph.offsets[u as usize].to_native() as usize;
+            let end = graph.offsets[(u + 1) as usize].to_native() as usize;
+            end - start
+        }).sum();
+        let backward_link_count: usize = backward_frontier.par_iter().map(|&u| {
+            let start = graph.reverse_offsets[u as usize].to_native() as usize;
+            let end = graph.reverse_offsets[(u + 1) as usize].to_native() as usize;
+            end - start
+        }).sum();
+
+        let expand_forward = forward_link_count <= backward_link_count;
+
+        if expand_forward {
+            forward_depth += 1;
+            let mut next_frontier = FxHashSet::with_capacity_and_hasher(forward_frontier.len() * 5, FxBuildHasher::default());
+            for &u in &forward_frontier {
+                let start_offset = graph.offsets[u as usize].to_native() as usize;
+                let end_offset = graph.offsets[(u + 1) as usize].to_native() as usize;
+                for v_le in &graph.edges[start_offset..end_offset] {
+                    let v = v_le.to_native();
+
+                    if !forward_dist.contains_key(&v) {
+                        forward_dist.insert(v, forward_depth);
+                        forward_parents.insert(v, vec![u]);
+                        next_frontier.insert(v);
+                    } else if forward_dist[&v] == forward_depth {
+                        forward_parents.get_mut(&v).unwrap().push(u);
+                    }
+                }
             }
+            forward_frontier = next_frontier;
 
-            let neighbors_start = u32::from(graph.reverse_offsets[u_idx]) as usize;
-            let neighbors_end = u32::from(graph.reverse_offsets[u_idx + 1]) as usize;
-
-            graph.reverse_edges[neighbors_start..neighbors_end]
-                .par_iter()
-                .for_each(|&v_idx_le| {
-                    let v_idx = u32::from(v_idx_le) as usize;
-                    let u_dist = dist_reverse.lock().unwrap()[u_idx];
-
-                    let mut dist_reverse = dist_reverse.lock().unwrap();
-                    let mut parents_reverse = parents_reverse.lock().unwrap();
-                    let mut queue_reverse = queue_reverse.lock().unwrap();
-
-                    if dist_reverse[v_idx] > u_dist + 1 {
-                        dist_reverse[v_idx] = u_dist + 1;
-                        parents_reverse[v_idx].clear();
-                        parents_reverse[v_idx].push(u_idx);
-                        queue_reverse.push_back(v_idx);
-                    } else if dist_reverse[v_idx] == u_dist + 1 {
-                        parents_reverse[v_idx].push(u_idx);
+            // Check for intersections with the backward search's visited nodes.
+            for &node in &forward_frontier {
+                if let Some(&bwd_dist) = backward_dist.get(&node) {
+                    let path_len = forward_depth + bwd_dist;
+                    if path_len < shortest_path_len {
+                        shortest_path_len = path_len;
+                        meeting_nodes.clear();
+                        meeting_nodes.insert(node);
+                    } else if path_len == shortest_path_len {
+                        meeting_nodes.insert(node);
                     }
+                }
+            }
+        } else { // Expand backward
+            backward_depth += 1;
+            let mut next_frontier = FxHashSet::with_capacity_and_hasher(backward_frontier.len() * 5, FxBuildHasher::default());
+            for &u in &backward_frontier {
+                let start_offset = graph.reverse_offsets[u as usize].to_native() as usize;
+                let end_offset = graph.reverse_offsets[(u + 1) as usize].to_native() as usize;
+                for v_le in &graph.reverse_edges[start_offset..end_offset] {
+                    let v = v_le.to_native();
 
-                    let dist_forward = dist_forward.lock().unwrap();
-                    let mut shortest_dist = shortest_dist.lock().unwrap();
-                    let mut meeting_point = meeting_point.lock().unwrap();
-
-                    if dist_forward[v_idx] != u32::MAX {
-                        let total_dist = dist_forward[v_idx] + dist_reverse[v_idx];
-                        if total_dist < *shortest_dist {
-                            *shortest_dist = total_dist;
-                            *meeting_point = Some(v_idx);
-                        }
+                    if !backward_dist.contains_key(&v) {
+                        backward_dist.insert(v, backward_depth);
+                        backward_parents.insert(v, vec![u]);
+                        next_frontier.insert(v);
+                    } else if backward_dist[&v] == backward_depth {
+                        backward_parents.get_mut(&v).unwrap().push(u);
                     }
-                });
+                }
+            }
+            backward_frontier = next_frontier;
+
+            // Check for intersections with the forward search's visited nodes.
+            for &node in &backward_frontier {
+                if let Some(&fwd_dist) = forward_dist.get(&node) {
+                    let path_len = backward_depth + fwd_dist;
+                    if path_len < shortest_path_len {
+                        shortest_path_len = path_len;
+                        meeting_nodes.clear();
+                        meeting_nodes.insert(node);
+                    } else if path_len == shortest_path_len {
+                        meeting_nodes.insert(node);
+                    }
+                }
+            }
         }
     }
 
-    if let Some(meeting_point) = *meeting_point.lock().unwrap() {
-        let forward_paths = build_paths_parallel(meeting_point, start_idx, &parents_forward.lock().unwrap());
-        let reverse_paths = build_paths_parallel(meeting_point, end_idx, &parents_reverse.lock().unwrap());
+    if meeting_nodes.is_empty() {
+        return vec![];
+    }
 
-        let mut paths = Vec::new();
+    let all_paths: FxHashSet<Vec<u32>> = meeting_nodes
+        .par_iter()
+        .flat_map(|&meet_node| {
+            let forward_paths = reconstruct_paths(meet_node, start_node, &forward_parents);
+            let backward_paths = reconstruct_paths(meet_node, end_node, &backward_parents);
 
-        for forward_path in forward_paths {
-            for reverse_path in &reverse_paths {
-                let mut path = forward_path.clone();
-                path.pop(); // Remove duplicate meeting point
-                path.extend(reverse_path.iter().rev());
-                paths.push(path);
+            let mut combined_paths = Vec::with_capacity(forward_paths.len() * backward_paths.len());
+
+            for f_path in &forward_paths {
+                for b_path in &backward_paths {
+                    let mut path = f_path.clone();
+                    let mut reversed_b_path = b_path.clone();
+                    reversed_b_path.reverse();
+                    path.extend_from_slice(&reversed_b_path[1..]);
+                    combined_paths.push(path);
+                }
             }
-        }
-
-        return paths
-            .into_par_iter()
-            .map(|mut path| {
-                path.reverse();
-                path.into_iter()
-                    .map(|idx| {
-                        let idx_le = u32_le::from_native(idx as u32);
-                        u32::from(*graph.index_to_page_id.get(&idx_le).unwrap())
-                    })
-                    .collect()
-            })
-            .collect();
-    }
-
-    Vec::new()
-}
-
-fn build_paths_parallel(
-    current_idx: usize,
-    start_idx: usize,
-    parents: &Vec<Vec<usize>>,
-) -> Vec<Vec<usize>> {
-    if current_idx == start_idx {
-        return vec![vec![start_idx]];
-    }
-
-    let parent_nodes = match parents.get(current_idx) {
-        Some(p) if !p.is_empty() => p,
-        _ => return Vec::new(),
-    };
-
-    parent_nodes
-        .par_iter() // Iterate over parents in parallel
-        .flat_map(|&parent_idx| {
-            // Recursively build paths from each parent
-            build_paths_parallel(parent_idx, start_idx, parents)
-                .into_par_iter()
-                .map(move |mut path| {
-                    path.push(current_idx); // Append current node to each path found
-                    path
-                })
+            combined_paths
         })
-        .collect()
+        .collect();
+
+    all_paths.into_par_iter().map(|path| {
+        path.into_iter().map(|idx| graph.index_to_page_id.get(&u32_le::from_native(idx)).unwrap().to_native()).collect()
+    }).collect()
 }
-
-
 
 #[get("/all-shortest-path/{from_page_id}/to/{to_page_id}")]
 async fn all_shortest_path(
