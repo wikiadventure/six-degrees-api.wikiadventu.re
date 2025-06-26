@@ -9,9 +9,8 @@ use reqwest::Client;
 use rkyv::{
     rancor::Error, to_bytes, Archive, Deserialize, Serialize
 };
-use tokio::io::{self, AsyncWriteExt};
 use utf8_chars::BufReadCharsExt;
-use std::{collections::HashMap, fs::File, io::{BufRead, BufReader, Read, Seek, SeekFrom, Write}, num::NonZero, sync::Arc};
+use std::{collections::HashMap, fs::File, io::{BufRead, BufReader, Read, Seek, SeekFrom, Write}, num::NonZero, sync::Arc, time::{Duration, Instant}};
 use tokio::{sync::Mutex, task};
 use rustc_hash::{FxBuildHasher, FxHashMap};
 use crate::dump_logger::DumpProgressLogger;
@@ -77,10 +76,27 @@ async fn sql_dump_stream_from_cache(file_type: &str) -> Result<SqlDumpStream, Bo
 
     let mut file = std::fs::File::create(file_path)?;
     
+    let mut downloaded: u64 = 0;
+    let mut last_log_time = Instant::now();
+    let log_interval = Duration::from_secs(10);
+
     // Note: `res` must be mutable to be read from.
     while let Some(chunk) = res.chunk().await? {
+        let chunk_len = chunk.len() as u64;
         file.write_all(&chunk)?;
-        pb.inc(chunk.len() as u64);
+        pb.inc(chunk_len);
+        downloaded += chunk_len;
+
+        if last_log_time.elapsed() >= log_interval {
+            println!(
+                "Downloading {}: {}/{} bytes ({:.2}%)",
+                url,
+                downloaded,
+                total_size,
+                (downloaded as f64 / total_size as f64) * 100.0
+            );
+            last_log_time = Instant::now();
+        }
     }
     pb.finish_with_message("Downloaded");
     // Open the newly downloaded file
@@ -101,6 +117,7 @@ async fn sql_dump_download_gunzipped(file_type: &str) -> Result<(), Box<dyn std:
         io::{self, BufReader, ErrorKind},
         prelude::*,
     };
+    use tokio_util::compat::TokioAsyncWriteCompatExt;
 
     let path = format!("cache/{}/{}wiki-latest-{}.sql", &*WIKI_LANG, &*WIKI_LANG, file_type);
     let file_path = std::path::Path::new(&path);
@@ -112,9 +129,9 @@ async fn sql_dump_download_gunzipped(file_type: &str) -> Result<(), Box<dyn std:
     println!("Downloading {}...", url);
 
     let client = Client::new();
-    let mut res = client.get(&url).send().await?;
+    let res = client.get(&url).send().await?;
     let total_size = res.content_length().unwrap_or(0);
-    let pb = ProgressBar::new(total_size);
+    let pb = Arc::new(ProgressBar::new(total_size));
     pb.set_style(ProgressStyle::default_bar()
         .template("{spinner:.green} [{elapsed_precise}] [{bar:40.cyan/blue}] {bytes}/{total_bytes} ({eta})")
         .unwrap()
@@ -126,17 +143,33 @@ async fn sql_dump_download_gunzipped(file_type: &str) -> Result<(), Box<dyn std:
         std::fs::create_dir_all(parent)?;
     }
 
-    let mut file = tokio::fs::File::create(file_path).await?;
+    let file = tokio::fs::File::create(file_path).await?;
+    let mut compat_file = file.compat_write();
 
-    let mut downloaded_size = 0;
+    let mut downloaded_size: u64 = 0;
+    let mut last_log_time = Instant::now();
+    let log_interval = Duration::from_secs(10);
+    let url_clone = url.clone();
+    let pb_clone = Arc::clone(&pb);
 
     let reader = res
         .bytes_stream()
-        .map(|chunk| {
+        .map(move |chunk| {
             match chunk {
                 Ok(bytes) => {
-                    downloaded_size += bytes.len() as u64;
-                    pb.set_position(downloaded_size); // Update progress bar
+                    let bytes_len = bytes.len() as u64;
+                    downloaded_size += bytes_len;
+                    pb_clone.set_position(downloaded_size); // Update progress bar
+                    if last_log_time.elapsed() >= log_interval {
+                        println!(
+                            "Downloading {}: {}/{} bytes ({:.2}%)",
+                            url_clone.clone(),
+                            downloaded_size,
+                            total_size,
+                            (downloaded_size as f64 / total_size as f64) * 100.0
+                        );
+                        last_log_time = Instant::now();
+                    }
                     Ok(bytes)
                 }
                 Err(e) => Err(io::Error::new(ErrorKind::Other, e)),
@@ -146,21 +179,7 @@ async fn sql_dump_download_gunzipped(file_type: &str) -> Result<(), Box<dyn std:
         .into_async_read();
     let mut decoder = GzipDecoder::new(BufReader::new(reader));
 
-    let mut buffer = [0u8; 8192];
-
-    // Read and write in chunks
-    loop {
-        // Read a chunk from the decoder
-        let bytes_read = 
-            decoder.read(&mut buffer).await.expect("Decode failed");
-        if bytes_read == 0 {
-            break; // EOF
-        }
-
-        // Write the chunk to the destination file
-        file.write_all_buf(&mut &buffer[..bytes_read]).await.expect("Failed writing dump to file");
-        // file.write_all(&buffer[..bytes_read]).await?;
-    }
+    futures::io::copy(&mut decoder, &mut compat_file).await?;
 
     pb.finish_with_message("Downloaded");
     Ok(())

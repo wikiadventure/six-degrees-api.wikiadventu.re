@@ -21,5 +21,15 @@ once_cell = "1.21.3"
 rustc-hash = "2.1.1"
 num_threads = "0.1.7"
 dotenv = "0.15.0"
-tokio-util = { version = "0.7.15", features = ["io-util", "io"] }
+tokio-util = { version = "0.7.15", features = ["io-util", "io", "compat"] }
 async-compression = { version = "0.4.25", features = ["futures-io", "gzip"] }
+async-trait = "0.1.77"
+bytes = "1.5.0"
+futures-core = "0.3.30"
+tokio-stream = "0.1.14"
+
+[build-dependencies]
+# prost-build = "0.12.3" 
+
+[profile.release]
+strip = true
