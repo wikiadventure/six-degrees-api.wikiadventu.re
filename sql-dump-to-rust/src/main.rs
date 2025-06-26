@@ -925,12 +925,18 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         index_to_page_id
     };
 
-    println!("offsets len {}", graph.offsets.len());
-    println!("edges len {}", graph.edges.len());
     println!("page_id_to_index len {}", graph.page_id_to_index.len());
     println!("index_to_page_id len {}", graph.index_to_page_id.len());
+
+    println!("offsets len {}", graph.offsets.len());
+    println!("edges len {}", graph.edges.len());
     println!("offsets last {}", graph.offsets.last().unwrap_or(&0));
     println!("edges last {}", graph.edges.last().unwrap_or(&0));
+
+    println!("reverse_offsets len {}", graph.reverse_offsets.len());
+    println!("reverse_edges len {}", graph.reverse_edges.len());
+    println!("reverse_offsets last {}", graph.reverse_offsets.last().unwrap_or(&0));
+    println!("reverse_edges last {}", graph.reverse_edges.last().unwrap_or(&0));
     
 
     println!("\nSerializing graph...");
