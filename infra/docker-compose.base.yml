@@ -1,42 +1,9 @@
 networks:
   web:
     name: web
+    external: true
 
 services:
-  traefik:
-    image: "traefik:v3.7.0"
-    container_name: "traefik"
-    command:
-      - "--api.insecure=false"
-      - "--providers.docker=true"
-      - "--providers.docker.exposedbydefault=false"
-      - "--entrypoints.web.address=:80"
-      - "--entrypoints.websecure.address=:443"
-      # Global HTTP to HTTPS redirect
-      - "--entrypoints.web.http.redirections.entryPoint.to=websecure"
-      - "--entrypoints.web.http.redirections.entryPoint.scheme=https"
-      # Let's Encrypt configuration via OVH DNS Challenge
-      - "--certificatesresolvers.myresolver.acme.dnschallenge=true"
-      - "--certificatesresolvers.myresolver.acme.dnschallenge.provider=ovh"
-      - "--certificatesresolvers.myresolver.acme.dnschallenge.delaybeforecheck=120"
-      - "--certificatesresolvers.myresolver.acme.dnschallenge.resolvers=ns10.ovh.net:53,dns10.ovh.net:53"
-      - "--certificatesresolvers.myresolver.acme.email=admin@wikiadventu.re"
-      - "--certificatesresolvers.myresolver.acme.storage=/letsencrypt/acme.json"
-    environment:
-      - OVH_ENDPOINT=${OVH_ENDPOINT:-ovh-eu}
-      - OVH_APPLICATION_KEY=${OVH_APPLICATION_KEY}
-      - OVH_APPLICATION_SECRET=${OVH_APPLICATION_SECRET}
-      - OVH_CONSUMER_KEY=${OVH_CONSUMER_KEY}
-    ports:
-      - "80:80"
-      - "443:443"
-    volumes:
-      - "/var/run/docker.sock:/var/run/docker.sock:ro"
-      - "./letsencrypt:/letsencrypt"
-    restart: unless-stopped
-    networks:
-      - web
-
   redis-cache:
     image: "redis:alpine"
     container_name: "redis-cache"
