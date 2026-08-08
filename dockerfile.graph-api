@@ -21,6 +21,7 @@ FROM gcr.io/distroless/cc-debian12:nonroot
 
 WORKDIR /app
 COPY graph.rkyv /app/graph.rkyv
+COPY metrics.json /app/metrics.json
 COPY --from=builder /usr/src/app/target/release/rust-graph-api /app/rust-graph-api
 
 CMD ["./rust-graph-api"]
