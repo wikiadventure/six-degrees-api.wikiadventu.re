@@ -3,6 +3,9 @@ name = "rust-graph-api"
 version = "0.1.0"
 edition = "2021"
 
+[dependencies.rust-graph-types]
+path = "../rust-graph-types"
+
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
@@ -19,6 +22,8 @@ num_threads = "0.1.7"
 actix-cors = "0.7.1"
 rustc-hash = "2.1.1"
 libc = "0.2.186"
+deadpool-redis = "0.23.0"
+redis = { version = "1.2.1", features = ["tokio-comp"] }
 
 [profile.release]
 lto = "fat"            # Enables Link Time Optimization (best performance)

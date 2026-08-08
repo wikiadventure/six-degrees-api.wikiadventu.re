@@ -9,3 +9,6 @@ rust-graph-api/cache
 cache
 **/node_modules
 **/*.rkyv
+target/
+rust-graph-analyzer/target
+rust-graph-types/target

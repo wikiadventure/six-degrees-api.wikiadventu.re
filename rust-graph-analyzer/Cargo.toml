@@ -1,0 +1,21 @@
+[package]
+name = "rust-graph-analyzer"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+rust-graph-types = { path = "../rust-graph-types" }
+rkyv = { version = "0.8.10", features = ["pointer_width_64"] }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+clap = { version = "4.4", features = ["derive"] }
+memmap2 = "0.9.3"
+rayon = "1.10.0"
+libc = "0.2.186"
+
+[profile.release]
+lto = "fat"            
+codegen-units = 1      
+panic = "abort"        
+strip = true           
+opt-level = 3          

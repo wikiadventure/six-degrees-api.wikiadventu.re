@@ -122,7 +122,8 @@ async function generateGraph(lang: Language, date: string) {
   console.log(`[${lang}] Running data processor (rust-graph-builder)...`);
   // Using WIKI_LANG or CLI args depending on your rust implementation.
   // We navigate to the parent repository root to execute the compiled binary.
-  const mirrorUrl = "https://ftp.acc.umu.se/mirror/wikimedia.org/dumps/";
+  // const mirrorUrl = "https://ftp.acc.umu.se/mirror/wikimedia.org/dumps/";
+  const mirrorUrl = "https://dumps.wikimedia.org/";
   await $`cd .. && WIKI_DUMP_MIRROR=${mirrorUrl} WIKI_LANG=${lang} WIKI_DATE=${date} ./rust-graph-builder/target/release/rust-graph-builder`;
 }
 
@@ -190,6 +191,9 @@ async function generateDockerCompose() {
   ${serviceName}:
     image: "${imageTag}"
     container_name: "${serviceName}"
+    environment:
+      - WIKI_LANG=${lang}
+      - REDIS_URL=redis://redis-cache:6379
     restart: unless-stopped
     networks:
       - web
@@ -217,7 +221,10 @@ async function deployServices(lang: Language) {
   const serviceName = `api-${lang}`;
   console.log(`[Deploy] Updating container for ${serviceName} with local optimized image...`);
   // Note: We deliberately SKIP 'docker compose pull' so it doesn't overwrite our local-optimized image
-  await $`docker compose up -d ${serviceName}`;
+  await $`docker compose up -d traefik redis-cache ${serviceName}`;
+  
+  console.log(`[Deploy] Purging redis cache for language ${lang}...`);
+  await $`docker exec redis-cache sh -c "redis-cli --scan --pattern '${lang}:*' | xargs -r redis-cli del"`;
   
   // Clean up dangling images to save disk space on Hetzner
   await $`docker image prune -f`;

@@ -5,10 +5,12 @@ use memmap2::Mmap;
 use once_cell::sync::Lazy; // Import Lazy
 use rayon::prelude::*;
 use rkyv::rend::u32_le;
-use rkyv::{access, rancor, Archive, Deserialize, Serialize};
+use rkyv::{Archive, Deserialize, Serialize};
+use rust_graph_types::{CsrGraph, ArchivedCsrGraph};
 use rustc_hash::{FxBuildHasher, FxHashMap, FxHashSet};
 use std::collections::HashMap;
 use std::fs::File;
+use deadpool_redis::{Config, Pool, Runtime};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct PageId(pub u32);
@@ -16,15 +18,7 @@ pub struct PageId(pub u32);
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct NodeIdx(pub u32);
 
-#[derive(Archive, Serialize, Deserialize, Debug, PartialEq)]
-struct CsrGraph {
-    offsets: Vec<u32>,
-    edges: Vec<u32>,
-    reverse_offsets: Vec<u32>,
-    reverse_edges: Vec<u32>,
-    page_id_to_index: HashMap<u32, u32>,
-    index_to_page_id: HashMap<u32, u32>,
-}
+const MAX_PATHS_TO_RETURN: usize = 1000;
 
 // Define a global static variable for the graph.
 // It will be initialized exactly once, on the first time it's accessed.
@@ -78,6 +72,8 @@ static GRAPH: Lazy<&'static ArchivedCsrGraph> = Lazy::new(|| {
 
 struct AppState {
     graph: &'static ArchivedCsrGraph,
+    pool: Pool,
+    wiki_lang: String,
 }
 
 fn reconstruct_paths(
@@ -289,6 +285,15 @@ async fn all_shortest_path(
     path_params: web::Path<(u32, u32)>,
 ) -> impl Responder {
     let (from_page_id, to_page_id) = path_params.into_inner();
+    let cache_key = format!("{}:{}:{}", state.wiki_lang, from_page_id, to_page_id);
+
+    // Check cache
+    if let Ok(mut conn) = state.pool.get().await {
+        let result: Result<Option<String>, _> = redis::cmd("GET").arg(&cache_key).query_async(&mut conn).await;
+        if let Ok(Some(cached_str)) = result {
+            return HttpResponse::Ok().content_type("application/json").body(cached_str);
+        }
+    }
 
     let graph = state.graph;
 
@@ -304,23 +309,50 @@ async fn all_shortest_path(
 
     let num_paths = paths.len();
     let shortest_path_length = paths.iter().map(|path| path.len()).min().unwrap_or(0);
+    let limited_paths: Vec<_> = paths.iter().take(MAX_PATHS_TO_RETURN).cloned().collect();
 
     let response = serde_json::json!({
-        "paths": paths,
+        "paths": limited_paths,
         "num_paths": num_paths,
         "shortest_path_length": shortest_path_length,
+        "path_limit": MAX_PATHS_TO_RETURN,
+        "truncated": num_paths > MAX_PATHS_TO_RETURN,
         "time_spent_ms": elapsed_time.as_millis()
     });
 
-    HttpResponse::Ok().json(response)
+    let raw_str = response.to_string();
+
+    if elapsed_time.as_millis() >= 1000 {
+        let pool = state.pool.clone();
+        let cache_key_clone = cache_key.clone();
+        let cache_val = raw_str.clone();
+        actix_web::rt::spawn(async move {
+            if let Ok(mut conn) = pool.get().await {
+                // Save to Redis (no expiration requested, but EX could be added if needed)
+                let _result: Result<(), _> = redis::cmd("SET")
+                    .arg(&cache_key_clone)
+                    .arg(&cache_val)
+                    .query_async(&mut conn)
+                    .await;
+            }
+        });
+    }
+
+    HttpResponse::Ok().content_type("application/json").body(raw_str)
 }
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
     env_logger::init_from_env(env_logger::Env::new().default_filter_or("info"));
 
+    let wiki_lang = std::env::var("WIKI_LANG").unwrap_or_else(|_| "en".to_string());
+    let redis_url = std::env::var("REDIS_URL").expect("REDIS_URL must be set");
+
+    let cfg = Config::from_url(redis_url);
+    let pool = cfg.create_pool(Some(Runtime::Tokio1)).unwrap();
+
     let graph = &*GRAPH;
-    let app_state = AppState { graph };
+    let app_state = AppState { graph, pool, wiki_lang };
     let graph_data = web::Data::new(app_state);
 
     

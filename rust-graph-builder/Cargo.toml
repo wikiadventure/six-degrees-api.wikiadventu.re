@@ -3,6 +3,9 @@ name = "rust-graph-builder"
 version = "0.1.0"
 edition = "2024"
 
+[dependencies.rust-graph-types]
+path = "../rust-graph-types"
+
 [dependencies]
 regex = "1.11.1"
 reqwest = { version = "0.13", default-features = false, features = ["rustls", "blocking", "stream"] }

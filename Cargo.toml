@@ -1,0 +1,8 @@
+[workspace]
+members = [
+    "rust-graph-api",
+    "rust-graph-builder",
+    "rust-graph-analyzer",
+    "rust-graph-types"
+]
+resolver = "2"

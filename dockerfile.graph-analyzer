@@ -1,0 +1,27 @@
+FROM rust:slim AS builder
+
+WORKDIR /usr/src/app
+
+COPY Cargo.toml Cargo.lock ./
+COPY rust-graph-types ./rust-graph-types
+COPY rust-graph-builder ./rust-graph-builder
+COPY rust-graph-analyzer ./rust-graph-analyzer
+COPY rust-graph-api ./rust-graph-api
+
+WORKDIR /usr/src/app/rust-graph-analyzer
+
+# Accept custom hardware optimization flags dynamically
+ARG CUSTOM_RUSTFLAGS=""
+ENV RUSTFLAGS="${CUSTOM_RUSTFLAGS}"
+
+RUN cargo build --release
+
+# Use the API image as the runtime base. 
+# Docker will 100% cache and perfectly share the 1.5GB graph layer and OS!
+FROM sacramentix1225/six-degrees-api-en:latest
+
+# The graph is ALREADY at /app/graph.rkyv, no need to copy it!
+# Just add the newly compiled analyzer binary to the /app folder.
+COPY --from=builder /usr/src/app/target/release/rust-graph-analyzer /app/rust-graph-analyzer
+
+CMD ["./rust-graph-analyzer"]

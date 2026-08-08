@@ -13,3 +13,6 @@ cache
 **/*.rkyv
 !graph.rkyv
 graphs/
+target/
+rust-graph-analyzer/target
+rust-graph-types/target

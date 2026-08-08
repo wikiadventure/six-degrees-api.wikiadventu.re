@@ -1,6 +1,11 @@
 FROM rust:slim AS builder
 
 WORKDIR /usr/src/app
+
+COPY Cargo.toml Cargo.lock ./
+COPY rust-graph-types ./rust-graph-types
+COPY rust-graph-builder ./rust-graph-builder
+COPY rust-graph-analyzer ./rust-graph-analyzer
 COPY rust-graph-api ./rust-graph-api
 
 WORKDIR /usr/src/app/rust-graph-api
@@ -15,9 +20,7 @@ RUN cargo build --release
 FROM gcr.io/distroless/cc-debian12:nonroot
 
 WORKDIR /app
-COPY --from=builder /usr/src/app/rust-graph-api/target/release/rust-graph-api /app/rust-graph-api
 COPY graph.rkyv /app/graph.rkyv
+COPY --from=builder /usr/src/app/target/release/rust-graph-api /app/rust-graph-api
 
 CMD ["./rust-graph-api"]
-
-EXPOSE 8080

@@ -1,9 +1,10 @@
+use rust_graph_types::{CsrGraph, ArchivedCsrGraph};
 use async_gen::futures_core::Stream;
 use flate2::read::GzDecoder;
 use indicatif::{ProgressBar, ProgressStyle};
 use lazy_static::lazy_static;
 use async_stream::stream;
-use futures::{StreamExt, TryStreamExt};
+use futures::{StreamExt};
 use regex::Regex;
 use reqwest::Client;
 use rkyv::{
@@ -11,7 +12,7 @@ use rkyv::{
 };
 use utf8_chars::BufReadCharsExt;
 use std::{collections::HashMap, fs::File, io::{BufRead, BufReader, Read, Seek, SeekFrom, Write}, num::NonZero, sync::Arc, time::{Duration, Instant}};
-use tokio::{sync::Mutex, task};
+use tokio::sync::Mutex;
 use rustc_hash::{FxBuildHasher, FxHashMap};
 use crate::dump_logger::DumpProgressLogger;
 #[path = "logger/dump_logger.rs"] mod dump_logger;
@@ -30,15 +31,6 @@ lazy_static! {
         env::var("WIKI_DUMP_MIRROR").unwrap_or_else(|_| "https://dumps.wikimedia.org/".to_string());
 }
 
-#[derive(Archive, Serialize, Deserialize, Debug, PartialEq)]
-struct CsrGraph {
-    offsets: Vec<u32>,
-    edges: Vec<u32>,
-    reverse_offsets: Vec<u32>,
-    reverse_edges: Vec<u32>,
-    page_id_to_index: HashMap<u32, u32>,
-    index_to_page_id: HashMap<u32, u32>,
-}
 
 pub struct SqlDumpStream {
     pub decoder: GzDecoder<File>,
