@@ -10,6 +10,7 @@ use rust_graph_types::{CsrGraph, ArchivedCsrGraph};
 use rustc_hash::{FxBuildHasher, FxHashMap, FxHashSet};
 use std::collections::HashMap;
 use std::fs::File;
+use std::sync::OnceLock;
 use deadpool_redis::{Config, Pool, Runtime};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -69,6 +70,18 @@ static GRAPH: Lazy<&'static ArchivedCsrGraph> = Lazy::new(|| {
     unsafe { rkyv::access_unchecked::<ArchivedCsrGraph>(mmap_static) }
 });
 
+
+static METRICS_JSON: OnceLock<String> = OnceLock::new();
+
+fn get_metrics_json() -> &'static str {
+    METRICS_JSON.get_or_init(|| {
+        std::fs::read_to_string("metrics.json")
+            .unwrap_or_else(|e| {
+                log::warn!("Failed to read metrics.json: {}", e);
+                "{}".to_string()
+            })
+    })
+}
 
 struct AppState {
     graph: &'static ArchivedCsrGraph,
@@ -341,6 +354,15 @@ async fn all_shortest_path(
     HttpResponse::Ok().content_type("application/json").body(raw_str)
 }
 
+#[get("/")]
+async fn metrics_endpoint() -> impl Responder {
+    let metrics = get_metrics_json();
+    HttpResponse::Ok()
+        .content_type("application/json")
+        .insert_header(("Cache-Control", "public, max-age=86400"))
+        .body(metrics)
+}
+
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
     env_logger::init_from_env(env_logger::Env::new().default_filter_or("info"));
@@ -374,6 +396,7 @@ async fn main() -> std::io::Result<()> {
         App::new()
             .wrap(Cors::default().allow_any_origin()) // Add CORS middleware to allow all origins
             .app_data(graph_data.clone())
+            .service(metrics_endpoint)
             .service(all_shortest_path)
     })
     .bind(("0.0.0.0", port))?

@@ -137,10 +137,14 @@ async function buildAndPushDockerImages(lang: Language, date: string) {
   // Link the giant graph memory so Docker can pick it up
   const targetPath = join("..", "graphs", lang, date, "graph.rkyv");
   const linkPath = join("..", "graph.rkyv");
-  
-  // Clean up any existing link first
+  const metricsPath = join("..", "graphs", lang, date, "metrics.json");
+  const metricsLinkPath = join("..", "metrics.json");
+
+  // Clean up any existing links first
   await rm(linkPath, { force: true });
+  await rm(metricsLinkPath, { force: true });
   await link(targetPath, linkPath);
+  await link(metricsPath, metricsLinkPath);
 
   try {
     const commitHash = (await $`git rev-parse --short HEAD`.text()).trim();
@@ -164,8 +168,9 @@ async function buildAndPushDockerImages(lang: Language, date: string) {
     const optFlags = process.env.OPTIMIZED_RUSTFLAGS || "-C target-cpu=znver2";
     await $`cd .. && docker build -f dockerfile.graph-api -t ${localOptimizedTag} --build-arg WIKI_LANG=${lang} --build-arg CUSTOM_RUSTFLAGS=${optFlags} .`;
   } finally {
-    // Cleanup the hard link regardless of build success
+    // Cleanup the hard links regardless of build success
     await rm(linkPath, { force: true });
+    await rm(metricsLinkPath, { force: true });
   }
 }
 
@@ -185,7 +190,7 @@ async function generateDockerCompose() {
     // We explicitly instruct Docker Compose to use the optimized local tag
     const imageTag = `${DOCKER_IMAGE_PREFIX}-${lang}:local-optimized`;
     // Traefik dynamically routes via host: lang.api.six-degrees.wikiadventu.re
-    const traefikRule = `Host(\`${lang}.api.six-degrees.wikiadventu.re\`)`;
+    const traefikRule = `Host(\`${lang}.api.six-degrees.wikiadventu.re\`) || Host(\`metadata.${lang}.api.six-degrees.wikiadventu.re\`)`;
     
     composeContent += `
   ${serviceName}:
@@ -204,6 +209,8 @@ async function generateDockerCompose() {
       - "traefik.http.routers.${serviceName}.tls.certresolver=myresolver"
       - "traefik.http.routers.${serviceName}.tls.domains[0].main=api.six-degrees.wikiadventu.re"
       - "traefik.http.routers.${serviceName}.tls.domains[0].sans=*.api.six-degrees.wikiadventu.re"
+      - "traefik.http.routers.${serviceName}.tls.domains[1].main=metadata.api.six-degrees.wikiadventu.re"
+      - "traefik.http.routers.${serviceName}.tls.domains[1].sans=*.metadata.api.six-degrees.wikiadventu.re"
       # Assuming your API runs on port 8080 internally, adjust if different
       - "traefik.http.services.${serviceName}.loadbalancer.server.port=8080"
 `;
